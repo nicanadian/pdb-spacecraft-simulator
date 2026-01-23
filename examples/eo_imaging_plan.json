@@ -1,0 +1,87 @@
+{
+  "spacecraft_id": "LEO-SAT-001",
+  "plan_id": "eo_imaging_targets",
+  "description": "EO imaging of 5 point targets with cross-track pointing",
+  "activities": [
+    {
+      "activity_id": "eo_001",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T00:00:00+00:00",
+      "end_time": "2025-01-15T00:30:00+00:00",
+      "parameters": {
+        "target_id": "target_1",
+        "target_lat_deg": 40.7128,
+        "target_lon_deg": -74.0060,
+        "priority": 1,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 3,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "eo_002",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T01:00:00+00:00",
+      "end_time": "2025-01-15T01:30:00+00:00",
+      "parameters": {
+        "target_id": "target_2",
+        "target_lat_deg": 51.5074,
+        "target_lon_deg": -0.1278,
+        "priority": 2,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 2,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "eo_003",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T02:00:00+00:00",
+      "end_time": "2025-01-15T02:30:00+00:00",
+      "parameters": {
+        "target_id": "target_3",
+        "target_lat_deg": 35.6762,
+        "target_lon_deg": 139.6503,
+        "priority": 1,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 3,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "eo_004",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T03:00:00+00:00",
+      "end_time": "2025-01-15T03:30:00+00:00",
+      "parameters": {
+        "target_id": "target_4",
+        "target_lat_deg": -33.8688,
+        "target_lon_deg": 151.2093,
+        "priority": 3,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 2,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "eo_005",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T04:00:00+00:00",
+      "end_time": "2025-01-15T04:30:00+00:00",
+      "parameters": {
+        "target_id": "target_5",
+        "target_lat_deg": 48.8566,
+        "target_lon_deg": 2.3522,
+        "priority": 2,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 2,
+        "sensor_power_w": 100.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "spacecraft_id": "LEO-SAT-001",
+  "plan_id": "orbit_lowering_500_400",
+  "description": "Orbit lowering maneuver from 500 km to 400 km using electric propulsion",
+  "activities": [
+    {
+      "activity_id": "ol_001",
+      "activity_type": "orbit_lower",
+      "start_time": "2025-01-15T00:00:00+00:00",
+      "end_time": "2025-01-15T12:00:00+00:00",
+      "parameters": {
+        "target_altitude_km": 400.0,
+        "thrust_n": 0.1,
+        "isp_s": 1500.0,
+        "power_w": 1500.0,
+        "thrusts_per_orbit": 2,
+        "thrust_arc_deg": 30.0
+      }
+    }
+  ]
+}

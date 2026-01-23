@@ -1,0 +1,29 @@
+# Spacecraft configuration for simulation examples
+
+spacecraft:
+  spacecraft_id: "LEO-SAT-001"
+  dry_mass_kg: 450.0
+  initial_propellant_kg: 50.0
+  battery_capacity_wh: 5000.0
+  storage_capacity_gb: 500.0
+  solar_panel_area_m2: 10.0
+  solar_efficiency: 0.30
+  base_power_w: 200.0
+
+# Electric propulsion configuration
+propulsion:
+  thrust_n: 0.1
+  isp_s: 1500.0
+  power_w: 1500.0
+  thrusts_per_orbit: 2
+  thrust_arc_deg: 30.0
+
+# EO sensor configuration
+sensor:
+  focal_length_mm: 1000.0
+  pixel_size_um: 10.0
+  detector_rows: 4096
+  detector_cols: 4096
+  integration_time_ms: 1.0
+  bits_per_pixel: 12
+  compression_ratio: 4.0

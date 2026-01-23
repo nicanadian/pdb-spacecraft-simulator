@@ -1,0 +1,49 @@
+{
+  "ground_stations": [
+    {
+      "station_id": "svalbard",
+      "name": "Svalbard Satellite Station",
+      "lat_deg": 78.2306,
+      "lon_deg": 15.3894,
+      "alt_m": 500,
+      "min_elevation_deg": 5.0,
+      "bands": ["S", "X", "Ka"]
+    },
+    {
+      "station_id": "fairbanks",
+      "name": "Fairbanks Command and Data Acquisition Station",
+      "lat_deg": 64.8601,
+      "lon_deg": -147.8522,
+      "alt_m": 150,
+      "min_elevation_deg": 5.0,
+      "bands": ["S", "X"]
+    },
+    {
+      "station_id": "mcmurdo",
+      "name": "McMurdo Ground Station",
+      "lat_deg": -77.8467,
+      "lon_deg": 166.6683,
+      "alt_m": 10,
+      "min_elevation_deg": 5.0,
+      "bands": ["S", "X"]
+    },
+    {
+      "station_id": "santiago",
+      "name": "Santiago Satellite Station",
+      "lat_deg": -33.1507,
+      "lon_deg": -70.6682,
+      "alt_m": 500,
+      "min_elevation_deg": 5.0,
+      "bands": ["S", "X"]
+    },
+    {
+      "station_id": "alice_springs",
+      "name": "Alice Springs Ground Station",
+      "lat_deg": -23.7628,
+      "lon_deg": 133.8744,
+      "alt_m": 550,
+      "min_elevation_deg": 5.0,
+      "bands": ["S", "X", "Ka"]
+    }
+  ]
+}
