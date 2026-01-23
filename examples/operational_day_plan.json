@@ -1,0 +1,119 @@
+{
+  "spacecraft_id": "LEO-SAT-001",
+  "plan_id": "operational_day_001",
+  "description": "Full operational day with imaging, downlinks, and maintenance activities",
+  "activities": [
+    {
+      "activity_id": "momentum_desat_001",
+      "activity_type": "momentum_desat",
+      "start_time": "2025-01-15T00:00:00+00:00",
+      "end_time": "2025-01-15T00:30:00+00:00",
+      "parameters": {
+        "wheel_momentum_nms": 0.5,
+        "target_momentum_nms": 0.05,
+        "mtq_dipole_am2": 1.0,
+        "desat_power_w": 20.0
+      }
+    },
+    {
+      "activity_id": "eo_collect_001",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T01:00:00+00:00",
+      "end_time": "2025-01-15T01:15:00+00:00",
+      "parameters": {
+        "target_id": "target_nyc",
+        "target_lat_deg": 40.7128,
+        "target_lon_deg": -74.0060,
+        "priority": 1,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 5,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "eo_collect_002",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T02:30:00+00:00",
+      "end_time": "2025-01-15T02:45:00+00:00",
+      "parameters": {
+        "target_id": "target_london",
+        "target_lat_deg": 51.5074,
+        "target_lon_deg": -0.1278,
+        "priority": 2,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 3,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "downlink_001",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T04:00:00+00:00",
+      "end_time": "2025-01-15T04:15:00+00:00",
+      "parameters": {
+        "station_id": "svalbard",
+        "band": "X",
+        "data_rate_mbps": 150.0,
+        "tx_power_w": 50.0,
+        "min_elevation_deg": 10.0
+      }
+    },
+    {
+      "activity_id": "eo_collect_003",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T06:00:00+00:00",
+      "end_time": "2025-01-15T06:15:00+00:00",
+      "parameters": {
+        "target_id": "target_tokyo",
+        "target_lat_deg": 35.6762,
+        "target_lon_deg": 139.6503,
+        "priority": 1,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 4,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "downlink_002",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T08:00:00+00:00",
+      "end_time": "2025-01-15T08:15:00+00:00",
+      "parameters": {
+        "station_id": "fairbanks",
+        "band": "X",
+        "data_rate_mbps": 150.0,
+        "tx_power_w": 50.0,
+        "min_elevation_deg": 10.0
+      }
+    },
+    {
+      "activity_id": "station_keeping_001",
+      "activity_type": "station_keeping",
+      "start_time": "2025-01-15T10:00:00+00:00",
+      "end_time": "2025-01-15T10:30:00+00:00",
+      "parameters": {
+        "maneuver_type": "altitude",
+        "target_altitude_km": 500.0,
+        "altitude_tolerance_km": 5.0,
+        "thrust_n": 0.1,
+        "isp_s": 1500.0,
+        "power_w": 1500.0
+      }
+    },
+    {
+      "activity_id": "momentum_desat_002",
+      "activity_type": "momentum_desat",
+      "start_time": "2025-01-15T12:00:00+00:00",
+      "end_time": "2025-01-15T12:30:00+00:00",
+      "parameters": {
+        "wheel_momentum_nms": 0.3,
+        "target_momentum_nms": 0.05,
+        "mtq_dipole_am2": 1.0,
+        "desat_power_w": 20.0
+      }
+    }
+  ]
+}

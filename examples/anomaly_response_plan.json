@@ -1,0 +1,61 @@
+{
+  "spacecraft_id": "LEO-SAT-001",
+  "plan_id": "anomaly_response_001",
+  "description": "Anomaly response scenario with collision avoidance and safe mode recovery",
+  "activities": [
+    {
+      "activity_id": "cam_001",
+      "activity_type": "collision_avoidance",
+      "start_time": "2025-01-15T00:00:00+00:00",
+      "end_time": "2025-01-15T00:30:00+00:00",
+      "parameters": {
+        "delta_v_m_s": 0.5,
+        "direction": "along_track",
+        "tca": "2025-01-15T02:00:00+00:00",
+        "miss_distance_m": 150.0,
+        "object_id": "DEBRIS-12345",
+        "probability_of_collision": 0.0001,
+        "thrust_n": 0.1,
+        "isp_s": 1500.0,
+        "thrust_power_w": 1500.0
+      }
+    },
+    {
+      "activity_id": "safe_mode_001",
+      "activity_type": "safe_mode",
+      "start_time": "2025-01-15T03:00:00+00:00",
+      "end_time": "2025-01-15T09:00:00+00:00",
+      "parameters": {
+        "reason": "post_cam_recovery",
+        "min_soc_exit": 0.7,
+        "base_power_w": 100.0,
+        "sun_pointing": true
+      }
+    },
+    {
+      "activity_id": "momentum_desat_recovery",
+      "activity_type": "momentum_desat",
+      "start_time": "2025-01-15T09:30:00+00:00",
+      "end_time": "2025-01-15T10:00:00+00:00",
+      "parameters": {
+        "wheel_momentum_nms": 0.8,
+        "target_momentum_nms": 0.1,
+        "mtq_dipole_am2": 1.0,
+        "desat_power_w": 20.0
+      }
+    },
+    {
+      "activity_id": "downlink_status",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T11:00:00+00:00",
+      "end_time": "2025-01-15T11:15:00+00:00",
+      "parameters": {
+        "station_id": "svalbard",
+        "band": "S",
+        "data_rate_mbps": 4.0,
+        "tx_power_w": 30.0,
+        "min_elevation_deg": 5.0
+      }
+    }
+  ]
+}

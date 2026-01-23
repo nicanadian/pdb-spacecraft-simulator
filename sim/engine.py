@@ -33,6 +33,11 @@ from sim.activities.base import (
 )
 from sim.activities.orbit_lower import OrbitLoweringHandler
 from sim.activities.eo_collect import EOCollectHandler
+from sim.activities.downlink import DownlinkHandler
+from sim.activities.collision_avoidance import CollisionAvoidanceHandler
+from sim.activities.safe_mode import SafeModeHandler
+from sim.activities.momentum_desat import MomentumDesatHandler
+from sim.activities.station_keeping import StationKeepingHandler
 
 
 logger = logging.getLogger(__name__)
@@ -42,6 +47,11 @@ logger = logging.getLogger(__name__)
 register_handler(IdleHandler())
 register_handler(OrbitLoweringHandler())
 register_handler(EOCollectHandler())
+register_handler(DownlinkHandler())
+register_handler(CollisionAvoidanceHandler())
+register_handler(SafeModeHandler())
+register_handler(MomentumDesatHandler())
+register_handler(StationKeepingHandler())
 
 
 def simulate(

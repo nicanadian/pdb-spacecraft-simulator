@@ -1,0 +1,92 @@
+{
+  "spacecraft_id": "EO-SAT-001",
+  "plan_id": "station_keeping_weekly",
+  "description": "Weekly station keeping for repeat ground track maintenance - based on KOMPSAT-style operations",
+  "activities": [
+    {
+      "activity_id": "sk_altitude_001",
+      "activity_type": "station_keeping",
+      "start_time": "2025-01-15T00:00:00+00:00",
+      "end_time": "2025-01-15T01:00:00+00:00",
+      "parameters": {
+        "maneuver_type": "altitude",
+        "target_altitude_km": 500.0,
+        "altitude_tolerance_km": 2.0,
+        "thrust_n": 0.1,
+        "isp_s": 1500.0,
+        "power_w": 1500.0
+      }
+    },
+    {
+      "activity_id": "eo_collect_track_001",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T02:00:00+00:00",
+      "end_time": "2025-01-15T02:20:00+00:00",
+      "parameters": {
+        "target_id": "calibration_site_1",
+        "target_lat_deg": 35.0,
+        "target_lon_deg": 135.0,
+        "priority": 1,
+        "max_cross_track_deg": 15.0,
+        "max_along_track_deg": 3.0,
+        "num_frames": 10,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "downlink_x_band",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T04:00:00+00:00",
+      "end_time": "2025-01-15T04:12:00+00:00",
+      "parameters": {
+        "station_id": "svalbard",
+        "band": "X",
+        "data_rate_mbps": 200.0,
+        "tx_power_w": 60.0,
+        "min_elevation_deg": 5.0
+      }
+    },
+    {
+      "activity_id": "sk_ground_track_001",
+      "activity_type": "station_keeping",
+      "start_time": "2025-01-15T06:00:00+00:00",
+      "end_time": "2025-01-15T06:30:00+00:00",
+      "parameters": {
+        "maneuver_type": "ground_track",
+        "ground_track_tolerance_km": 2.0,
+        "thrust_n": 0.1,
+        "isp_s": 1500.0,
+        "power_w": 1500.0
+      }
+    },
+    {
+      "activity_id": "eo_collect_track_002",
+      "activity_type": "eo_collect",
+      "start_time": "2025-01-15T08:00:00+00:00",
+      "end_time": "2025-01-15T08:20:00+00:00",
+      "parameters": {
+        "target_id": "urban_monitoring",
+        "target_lat_deg": 37.5665,
+        "target_lon_deg": 126.9780,
+        "priority": 2,
+        "max_cross_track_deg": 20.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 8,
+        "sensor_power_w": 100.0
+      }
+    },
+    {
+      "activity_id": "downlink_high_rate",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T10:00:00+00:00",
+      "end_time": "2025-01-15T10:10:00+00:00",
+      "parameters": {
+        "station_id": "alice_springs",
+        "band": "Ka",
+        "data_rate_mbps": 500.0,
+        "tx_power_w": 80.0,
+        "min_elevation_deg": 20.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "spacecraft_id": "CUBESAT-SWARM-01",
+  "plan_id": "constellation_contact_001",
+  "description": "Cubesat constellation ground contact scheduling - shared antenna scenario based on Aerie ConOps",
+  "activities": [
+    {
+      "activity_id": "downlink_pass_1",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T00:30:00+00:00",
+      "end_time": "2025-01-15T00:42:00+00:00",
+      "parameters": {
+        "station_id": "svalbard",
+        "band": "S",
+        "data_rate_mbps": 4.0,
+        "tx_power_w": 2.0,
+        "min_elevation_deg": 10.0,
+        "priority_data_first": true
+      }
+    },
+    {
+      "activity_id": "safe_mode_charging",
+      "activity_type": "safe_mode",
+      "start_time": "2025-01-15T01:00:00+00:00",
+      "end_time": "2025-01-15T02:30:00+00:00",
+      "parameters": {
+        "reason": "battery_charging",
+        "min_soc_exit": 0.8,
+        "base_power_w": 50.0,
+        "sun_pointing": true
+      }
+    },
+    {
+      "activity_id": "downlink_pass_2",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T03:00:00+00:00",
+      "end_time": "2025-01-15T03:10:00+00:00",
+      "parameters": {
+        "station_id": "fairbanks",
+        "band": "S",
+        "data_rate_mbps": 4.0,
+        "tx_power_w": 2.0,
+        "min_elevation_deg": 10.0
+      }
+    },
+    {
+      "activity_id": "momentum_desat_polar",
+      "activity_type": "momentum_desat",
+      "start_time": "2025-01-15T04:00:00+00:00",
+      "end_time": "2025-01-15T04:20:00+00:00",
+      "parameters": {
+        "wheel_momentum_nms": 0.2,
+        "target_momentum_nms": 0.02,
+        "mtq_dipole_am2": 0.5,
+        "desat_power_w": 10.0,
+        "max_desat_rate_nms_per_s": 0.005
+      }
+    },
+    {
+      "activity_id": "downlink_pass_3",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T05:30:00+00:00",
+      "end_time": "2025-01-15T05:40:00+00:00",
+      "parameters": {
+        "station_id": "mcmurdo",
+        "band": "S",
+        "data_rate_mbps": 4.0,
+        "tx_power_w": 2.0,
+        "min_elevation_deg": 10.0
+      }
+    },
+    {
+      "activity_id": "downlink_pass_4",
+      "activity_type": "downlink",
+      "start_time": "2025-01-15T08:00:00+00:00",
+      "end_time": "2025-01-15T08:12:00+00:00",
+      "parameters": {
+        "station_id": "svalbard",
+        "band": "S",
+        "data_rate_mbps": 4.0,
+        "tx_power_w": 2.0,
+        "min_elevation_deg": 10.0
+      }
+    }
+  ]
+}
