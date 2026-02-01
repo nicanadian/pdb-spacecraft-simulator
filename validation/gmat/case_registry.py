@@ -641,3 +641,8 @@ def list_case_ids(tier: Optional[CaseTier] = None) -> List[str]:
     if tier is None:
         return list(CASE_REGISTRY.keys())
     return [case.case_id for case in get_tier_cases(tier)]
+
+
+def get_all_cases() -> List[CaseDefinition]:
+    """Get all case definitions."""
+    return list(CASE_REGISTRY.values())
