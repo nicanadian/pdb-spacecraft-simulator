@@ -1,0 +1,78 @@
+# MCP Server Configuration for Spacecraft Simulator
+#
+# This file defines the configuration for the MCP server that exposes
+# simulation, Aerie integration, and visualization tools.
+
+server:
+  name: "pdb-spacecraft-simulator"
+  version: "0.1.0"
+  description: "Spacecraft simulation tools for LEO/VLEO mission planning"
+
+# Directory settings
+directories:
+  runs: "runs"
+  output: "output"
+  cache: ".cache"
+
+# Aerie integration settings
+aerie:
+  enabled: true
+  host: "localhost"
+  port: 9000
+  use_ssl: false
+  # auth_token: ""  # Set via AERIE_AUTH_TOKEN environment variable
+
+# Visualization settings
+visualization:
+  enabled: true
+  czml:
+    satellite_scale: 1.5
+    orbit_trail_lead_time: 3600
+    orbit_trail_trail_time: 3600
+  events:
+    include_info: true
+    include_warnings: true
+    include_violations: true
+
+# Simulation defaults
+simulation:
+  default_fidelity: "LOW"
+  enable_cache: true
+  time_step_s: 60.0
+
+# Tool settings
+tools:
+  # Simulation tools
+  run_simulation:
+    enabled: true
+    timeout_s: 300
+  get_run_status:
+    enabled: true
+  get_run_results:
+    enabled: true
+  list_runs:
+    enabled: true
+    default_limit: 10
+
+  # Aerie tools (require aerie.enabled: true)
+  aerie_status:
+    enabled: true
+  create_plan:
+    enabled: true
+  run_scheduler:
+    enabled: true
+    poll_interval_s: 5
+    timeout_s: 300
+  export_plan:
+    enabled: true
+
+  # Visualization tools (require visualization.enabled: true)
+  generate_viz:
+    enabled: true
+  compare_runs:
+    enabled: true
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

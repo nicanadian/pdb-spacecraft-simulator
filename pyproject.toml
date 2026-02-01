@@ -35,21 +35,55 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
+    "responses>=0.23.0",
     "black>=23.0.0",
     "ruff>=0.0.270",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
+    "responses>=0.23.0",
+]
+validation = [
+    "jinja2>=3.0.0",
+]
+aerie = [
+    "requests>=2.28.0",
+]
+basilisk = [
+    "Basilisk>=2.0.0",
+]
+medium = [
+    "Basilisk>=2.0.0",
+    "scipy>=1.10.0",
+]
+mcp = [
+    "mcp>=0.9.0",
+]
+e2e = [
+    "playwright>=1.40.0",
+    "pytest-playwright>=0.4.0",
 ]
 
 [project.scripts]
 simrun = "cli.simrun:main"
+mcp-server = "sim_mcp.server:main"
 
 [tool.setuptools.packages.find]
-include = ["sim*", "cli*"]
+include = ["sim*", "cli*", "sim_mcp*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 addopts = "-v"
+asyncio_mode = "auto"
+markers = [
+    "e2e: mark test as end-to-end test requiring Aerie",
+]
 
 [tool.black]
 line-length = 100
