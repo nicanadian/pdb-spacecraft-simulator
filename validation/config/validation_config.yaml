@@ -1,0 +1,162 @@
+# GMAT Validation Configuration
+# =============================
+# Configuration for validation scenarios and thresholds
+
+# Tolerance Configuration
+# -----------------------
+# Tolerances define acceptable error bounds between simulator and GMAT reference
+tolerances:
+  # Global default tolerances
+  global:
+    position_rms_km: 5.0       # Position RMS error (km)
+    velocity_rms_m_s: 5.0      # Velocity RMS error (m/s)
+    position_max_km: 20.0      # Maximum position error (km)
+    velocity_max_m_s: 20.0     # Maximum velocity error (m/s)
+    altitude_rms_km: 2.0       # Altitude RMS error (km)
+
+  # Scenario-specific tolerance overrides
+  scenarios:
+    pure_propagation:
+      position_rms_km: 1.0     # Tighter for pure propagation (no thrust)
+      velocity_rms_m_s: 1.0
+    orbit_lowering:
+      position_rms_km: 10.0    # Looser due to thrust modeling differences
+      velocity_rms_m_s: 10.0
+    ground_station_access:
+      position_rms_km: 5.0     # Standard tolerance
+
+# Legacy thresholds (for backward compatibility)
+thresholds:
+  # Position RMS error threshold (km)
+  position_rms_km: 5.0
+
+  # Velocity RMS error threshold (m/s)
+  velocity_rms_m_s: 5.0
+
+  # Altitude RMS error threshold (km)
+  altitude_rms_km: 2.0
+
+  # Access window timing error threshold (seconds)
+  access_timing_s: 60.0
+
+  # Minimum window match rate for access validation
+  access_match_rate: 0.9
+
+# Validation scenarios
+scenarios:
+  # Pure propagation validation
+  pure_propagation:
+    enabled: true
+    duration_hours: 12.0
+    step_s: 60.0
+    description: "SGP4 vs numerical integration baseline"
+    initial_conditions:
+      altitude_km: 500.0
+      inclination_deg: 53.0
+      raan_deg: 0.0
+      arg_perigee_deg: 0.0
+      true_anomaly_deg: 0.0
+
+  # Orbit lowering validation
+  orbit_lowering:
+    enabled: true
+    duration_hours: 12.0
+    step_s: 60.0
+    description: "EP thrust modeling validation"
+    initial_conditions:
+      altitude_km: 500.0
+      inclination_deg: 53.0
+    target_altitude_km: 400.0
+    ep_config:
+      thrust_mN: 100.0
+      isp_s: 1500.0
+      thrusts_per_orbit: 2
+      thrust_arc_deg: 30.0
+
+  # Ground station access validation
+  ground_station_access:
+    enabled: true
+    duration_hours: 24.0
+    step_s: 60.0
+    description: "Visibility computation validation"
+    initial_conditions:
+      altitude_km: 500.0
+      inclination_deg: 53.0
+    stations:
+      - id: Svalbard
+        lat_deg: 78.2306
+        lon_deg: 15.3894
+        min_elevation_deg: 5.0
+      - id: Fairbanks
+        lat_deg: 64.8601
+        lon_deg: -147.8522
+        min_elevation_deg: 5.0
+      - id: McMurdo
+        lat_deg: -77.8467
+        lon_deg: 166.6683
+        min_elevation_deg: 5.0
+
+# Reference data settings
+reference:
+  # Directory containing pre-generated reference data
+  directory: validation/reference
+
+  # Base epoch for all scenarios (UTC)
+  epoch: "2025-01-15T00:00:00Z"
+
+  # Spacecraft properties
+  spacecraft:
+    name: ValidationSC
+    dry_mass_kg: 450.0
+    propellant_kg: 50.0
+    drag_area_m2: 5.0
+    srp_area_m2: 10.0
+
+# GMAT settings (for regenerating reference data)
+gmat:
+  # Enable GMAT execution (set to false to use reference data only)
+  enabled: false
+
+  # GMAT executable path (auto-detected if not set)
+  executable: null
+
+  # Execution settings
+  timeout_s: 3600              # Execution timeout per script
+  isolated_runs: true          # Run each script in isolated directory
+
+  # Baseline storage settings
+  baselines_dir: validation/baselines/gmat
+
+  # Force model settings
+  force_model:
+    gravity_degree: 4
+    gravity_order: 4
+    include_drag: true
+    include_srp: false
+    f107: 150.0
+    f107a: 150.0
+    kp: 3.0
+
+  # Integrator settings
+  integrator:
+    type: RungeKutta89
+    initial_step_s: 60.0
+    accuracy: 1.0e-12
+    min_step_s: 0.001
+    max_step_s: 2700.0
+
+# Output settings
+output:
+  # Output directory for reports
+  directory: validation/output
+
+  # Report formats to generate
+  formats:
+    - json
+    - markdown
+
+  # Include detailed error timeseries
+  include_timeseries: true
+
+  # Include plots (requires matplotlib)
+  include_plots: false

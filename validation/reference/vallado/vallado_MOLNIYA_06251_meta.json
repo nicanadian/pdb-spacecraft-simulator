@@ -1,0 +1,8 @@
+{
+  "name": "MOLNIYA_06251",
+  "description": "Molniya-type Highly Elliptical Orbit",
+  "tle_line1": "1 06251U 62025E   06176.82412014  .00008885  00000-0  12808-3 0  3985",
+  "tle_line2": "2 06251  58.0579  54.0425 0030035 139.1568 221.1854 15.56387291  6774",
+  "num_points": 7,
+  "source": "Vallado SGP4 Verification Dataset"
+}

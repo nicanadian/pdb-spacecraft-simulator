@@ -1,0 +1,16 @@
+{
+  "baselines": {
+    "pure_propagation_12h": {
+      "v1": {
+        "path": "pure_propagation_12h/baseline_v1.json",
+        "scenario_hash": "3bf16fe3ced99915",
+        "gmat_version": "********************************************\n***  GMAT Console Application\n********************************************\n\nGeneral Mission Analysis Tool\nConsole Based Version\nBuild Date: Apr 18 2025  09:53:16\n\n\nGMAT working directory set to '/Applications/GMAT R2025a/bin/'\nModerator is updating data files...\nModerator is creating core engine...\n\ndlopen(../plugins/libPythonInterface_py312.dylib, 0x0001): Library not loaded: /Library/Frameworks/Python.framework/Versions/3.12/Python\n  Referenced from: <75BEC73C-88B0-301A-8C25-E63EABB2D5E2> /Applications/GMAT R2025a/bin/GMAT-R2025a_Beta.app/Contents/plugins/libPythonInterface_py312.R2025a.dylib\n  Reason: tried: '/Library/Frameworks/Python.framework/Versions/3.12/Python' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/Library/Frameworks/Python.framework/Versions/3.12/Python' (no such file), '/Library/Frameworks/Python.framework/Versions/3.12/Python' (no such file)\n*** Library \"../plugins/libPythonInterface_py312\" did not open.\n\ndlopen(../plugins/libMatlabInterface.dylib, 0x0001): Library not loaded: @rpath/libmex.dylib\n  Referenced from: <4E80FAEA-77EA-3F03-BDA6-2DCDF6E052B7> /Applications/GMAT R2025a/bin/GMAT-R2025a_Beta.app/Contents/plugins/libMatlabInterface.R2025a.dylib\n  Reason: tried: '/Applications/GMAT R2025a/bin/GMAT-R2025a_Beta.app/Contents/plugins/../Frameworks/libmex.dylib' (no such file), '/Applications/GMAT R2025a/bin/GMAT-R2025a_Beta.app/Contents/plugins/../Frameworks/libmex.dylib' (no such file), '/Applications/GMAT R2025a/bin/GMAT-R2025a_Beta.app/Contents/Frameworks/libmex.dylib' (no such file), '/Applications/GMAT R2025a/bin/GMAT-R2025a_Beta.app/Contents/Frameworks/../plugins/libmex.dylib' (no such file), '/Applications/GMAT R2025a/bin/GMAT-R2025a_Beta.app/Contents/Frameworks/../plugins/proprietary/libmex.dylib' (no such file), '/Applications/GMAT R2025a/bin/GMAT-R2025a_Beta.app/Contents/MacOS/../Frameworks/libmex.dylib' (no such file)\n*** Library \"../plugins/libMatlabInterface\" did not open.\nSuccessfully set Planetary Source to use: DE405\nSuccessfully set Planetary Source to use: DE405\nSuccessfully set Planetary Source to use: DE405\nSetting nutation file to ../data/planetary_coeff/NUTATION.DAT\nSetting leap seconds file to ../data/time/tai-utc.dat\n2026-02-01 13:17:27 GMAT Moderator successfully created core engine\n\n\nBuild Date: Apr 18 2025  09:53:16\n\nModerator is deleting core engine...",
+        "created_at": "2026-02-01T13:17:27.892562",
+        "num_points": 722,
+        "start_epoch": "2025-01-15T00:00:00+00:00",
+        "end_epoch": "2025-01-15T12:01:00+00:00"
+      },
+      "latest": "v1"
+    }
+  }
+}

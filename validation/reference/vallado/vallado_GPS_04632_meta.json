@@ -1,0 +1,8 @@
+{
+  "name": "GPS_04632",
+  "description": "GPS-like Medium Earth Orbit",
+  "tle_line1": "1 04632U 70093B   04031.91070959 -.00000084  00000-0  10000-3 0  9955",
+  "tle_line2": "2 04632  11.4628 273.1101 1450506 207.6000 143.9350  1.20231981 44145",
+  "num_points": 7,
+  "source": "Vallado SGP4 Verification Dataset"
+}

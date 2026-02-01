@@ -1,0 +1,8 @@
+{
+  "name": "SSO_28654",
+  "description": "Sun-synchronous polar orbit",
+  "tle_line1": "1 28654U 05018A   06176.94472275  .00000386  00000-0  33388-4 0  2129",
+  "tle_line2": "2 28654  98.0551 257.7729 0009345 325.0976  34.9605 14.88432506 57657",
+  "num_points": 7,
+  "source": "Vallado SGP4 Verification Dataset"
+}
