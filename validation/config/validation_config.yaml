@@ -2,8 +2,39 @@
 # =============================
 # Configuration for validation scenarios and thresholds
 
+# =============================================================================
+# GMAT Regression Test Cases
+# =============================================================================
+# Tier A: CI fast checks (run on every PR)
+# Tier B: Nightly ops checks (more comprehensive, longer duration)
+
+gmat_cases:
+  # Tier A - CI fast checks
+  tier_a:
+    timeout_s: 300
+    enabled: true
+    cases:
+      - R01_finite_burn
+      - R04_electric_propulsion
+      - R05_force_models
+      - R07_attitude_vnb
+      - R08_thf_propagation
+      - R09_eclipse_location
+      - R11_leo_station_keeping
+
+  # Tier B - Nightly ops checks
+  tier_b:
+    timeout_s: 1800
+    enabled: true
+    cases:
+      - N01_leo_ep_drag_makeup
+      - N03_vleo_duty_cycle
+      - N05_constellation_phasing
+      - N06_sk_finite_burn
+
+# =============================================================================
 # Tolerance Configuration
-# -----------------------
+# =============================================================================
 # Tolerances define acceptable error bounds between simulator and GMAT reference
 tolerances:
   # Global default tolerances
@@ -24,6 +55,46 @@ tolerances:
       velocity_rms_m_s: 10.0
     ground_station_access:
       position_rms_km: 5.0     # Standard tolerance
+
+    # Tier A case tolerances
+    R01_finite_burn:
+      position_rms_km: 1.0
+      sma_km: 0.1
+      ecc: 0.0001
+      mass_kg: 0.01
+    R04_electric_propulsion:
+      position_rms_km: 5.0
+      sma_km: 0.5
+      mass_kg: 0.1
+    R05_force_models:
+      position_rms_km: 1.0
+      velocity_rms_m_s: 1.0
+    R07_attitude_vnb:
+      position_rms_km: 1.0
+      sma_km: 0.1
+    R08_thf_propagation:
+      position_rms_km: 2.0
+      mass_kg: 0.1
+    R09_eclipse_location:
+      position_rms_km: 1.0
+    R11_leo_station_keeping:
+      position_rms_km: 5.0
+      altitude_rms_km: 1.0
+
+    # Tier B case tolerances
+    N01_leo_ep_drag_makeup:
+      sma_drift_km_per_day: 0.01
+      mass_kg: 0.1
+      altitude_rms_km: 2.0
+    N03_vleo_duty_cycle:
+      sma_drift_km_per_day: 0.02
+      duty_cycle_fraction: 0.02
+    N05_constellation_phasing:
+      phase_separation_deg: 1.0
+      sma_km: 0.5
+    N06_sk_finite_burn:
+      altitude_rms_km: 1.0
+      mass_kg: 0.1
 
 # Legacy thresholds (for backward compatibility)
 thresholds:

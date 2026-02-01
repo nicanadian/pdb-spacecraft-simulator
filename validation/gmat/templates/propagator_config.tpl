@@ -61,5 +61,5 @@ GMAT {{ propagator_name }}.InitialStepSize = {{ initial_step_s }};
 GMAT {{ propagator_name }}.Accuracy = {{ accuracy }};
 GMAT {{ propagator_name }}.MinStep = {{ min_step_s }};
 GMAT {{ propagator_name }}.MaxStep = {{ max_step_s }};
-GMAT {{ propagator_name }}.MaxStepAttempts = 50;
-GMAT {{ propagator_name }}.StopIfAccuracyIsViolated = true;
+GMAT {{ propagator_name }}.MaxStepAttempts = 100;
+GMAT {{ propagator_name }}.StopIfAccuracyIsViolated = false;

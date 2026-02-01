@@ -26,6 +26,28 @@ requires_gmat = pytest.mark.skipif(
     reason="GMAT not installed. Set GMAT_ROOT environment variable or install GMAT."
 )
 
+# =============================================================================
+# Tier markers for selective test execution
+# =============================================================================
+# Run tier A only: pytest -m tier_a validation/tests/test_gmat_cases.py
+# Run tier B only: pytest -m tier_b validation/tests/test_gmat_cases.py
+
+tier_a = pytest.mark.tier_a  # CI fast checks
+tier_b = pytest.mark.tier_b  # Nightly ops checks
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers", "tier_a: Tier A tests (CI fast checks)"
+    )
+    config.addinivalue_line(
+        "markers", "tier_b: Tier B tests (nightly ops checks)"
+    )
+    config.addinivalue_line(
+        "markers", "requires_gmat: Tests that require GMAT installation"
+    )
+
 
 @pytest.fixture(scope="session")
 def gmat_executor():
@@ -150,3 +172,73 @@ def sample_baseline(sample_scenario_config, sample_ephemeris_df):
         ephemeris_df=sample_ephemeris_df,
         gmat_version="R2022a (test)",
     )
+
+
+# =============================================================================
+# GMAT Case Registry Fixtures
+# =============================================================================
+
+@pytest.fixture(scope="session")
+def case_registry():
+    """
+    Load the GMAT case registry.
+
+    Returns:
+        Dict mapping case_id to CaseDefinition
+    """
+    from validation.gmat.case_registry import CASE_REGISTRY
+    return CASE_REGISTRY
+
+
+@pytest.fixture(scope="session")
+def tier_a_cases():
+    """
+    Get Tier A case IDs.
+
+    Returns:
+        List of Tier A case IDs
+    """
+    from validation.gmat.case_registry import CaseTier, list_case_ids
+    return list_case_ids(CaseTier.A)
+
+
+@pytest.fixture(scope="session")
+def tier_b_cases():
+    """
+    Get Tier B case IDs.
+
+    Returns:
+        List of Tier B case IDs
+    """
+    from validation.gmat.case_registry import CaseTier, list_case_ids
+    return list_case_ids(CaseTier.B)
+
+
+@pytest.fixture
+def case_runner(tmp_path):
+    """
+    Create a CaseRunner with temporary output directory.
+
+    Args:
+        tmp_path: pytest tmp_path fixture
+
+    Returns:
+        CaseRunner instance
+    """
+    from validation.gmat.harness.run_case import CaseRunner
+    return CaseRunner(output_dir=tmp_path / "output")
+
+
+@pytest.fixture
+def truth_generator(tmp_path):
+    """
+    Create a TruthGenerator with temporary baselines directory.
+
+    Args:
+        tmp_path: pytest tmp_path fixture
+
+    Returns:
+        TruthGenerator instance
+    """
+    from validation.gmat.harness.generate_truth import TruthGenerator
+    return TruthGenerator(baselines_dir=tmp_path / "baselines")

@@ -1,0 +1,49 @@
+{
+  "case_id": "N01",
+  "name": "LEO EP Drag Makeup",
+  "description": "Maintain mean SMA under drag using EP finite burns at apogee",
+  "template_name": "N01_leo_ep_drag_makeup.tpl",
+  "category": "ep_ops",
+  "orbit_regime": "LEO",
+  "propulsion": "ep",
+  "tier": "B",
+
+  "spacecraft_name": "ValidationSC",
+  "sma_km": 6878.137,
+  "ecc": 0.0001,
+  "inc_deg": 53.0,
+  "raan_deg": 0.0,
+  "aop_deg": 0.0,
+  "ta_deg": 0.0,
+
+  "dry_mass_kg": 450.0,
+  "propellant_kg": 50.0,
+  "drag_area_m2": 5.0,
+  "srp_area_m2": 10.0,
+
+  "thrust_mN": 100.0,
+  "isp_s": 1500.0,
+  "max_power_kw": 1.5,
+
+  "report_step_s": 60.0,
+  "f107": 150.0,
+  "f107a": 150.0,
+
+  "template_vars": {
+    "gravity_degree": 10,
+    "gravity_order": 10,
+    "altitude_threshold_km": 498,
+    "burn_duration_s": 600
+  },
+
+  "tolerances": {
+    "sma_drift_km_per_day": 0.01,
+    "mass_kg": 0.1
+  },
+
+  "acceptance_criteria": [
+    "Mean SMA drift approximately 0 over simulation window",
+    "Mass decreases per thrust profile",
+    "Runtime under 2 minutes for 10-day simulation"
+  ]
+}

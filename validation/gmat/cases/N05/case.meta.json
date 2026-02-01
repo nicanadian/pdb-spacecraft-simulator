@@ -1,0 +1,48 @@
+{
+  "case_id": "N05",
+  "name": "Constellation Phasing",
+  "description": "Two-spacecraft along-track phasing with differential EP",
+  "template_name": "N05_constellation_phasing.tpl",
+  "category": "phasing",
+  "orbit_regime": "LEO",
+  "propulsion": "ep",
+  "tier": "B",
+
+  "spacecraft_name": "SC_Lead",
+  "sma_km": 6878.137,
+  "ecc": 0.0001,
+  "inc_deg": 53.0,
+  "raan_deg": 0.0,
+  "aop_deg": 0.0,
+
+  "dry_mass_kg": 450.0,
+  "propellant_kg": 50.0,
+  "drag_area_m2": 5.0,
+  "srp_area_m2": 10.0,
+
+  "thrust_mN": 100.0,
+  "isp_s": 1500.0,
+  "max_power_kw": 1.5,
+
+  "report_step_s": 60.0,
+  "f107": 150.0,
+  "f107a": 150.0,
+
+  "template_vars": {
+    "ta_lead_deg": 0.0,
+    "ta_trail_deg": 10.0,
+    "target_phase_deg": 45.0,
+    "gravity_degree": 10,
+    "gravity_order": 10
+  },
+
+  "tolerances": {
+    "phase_separation_deg": 1.0,
+    "sma_km": 0.5
+  },
+
+  "acceptance_criteria": [
+    "Phase separation achieved at target",
+    "Synchronized propagation maintained"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "case_id": "N03",
+  "name": "VLEO Duty-Cycle Drag Makeup",
+  "description": "EP thrust only in sunlight arcs (eclipse gating)",
+  "template_name": "N03_vleo_duty_cycle.tpl",
+  "category": "ep_ops",
+  "orbit_regime": "VLEO",
+  "propulsion": "ep",
+  "tier": "B",
+
+  "spacecraft_name": "ValidationSC",
+  "sma_km": 6728.137,
+  "ecc": 0.0001,
+  "inc_deg": 53.0,
+  "raan_deg": 0.0,
+  "aop_deg": 0.0,
+  "ta_deg": 0.0,
+
+  "dry_mass_kg": 450.0,
+  "propellant_kg": 50.0,
+  "drag_area_m2": 5.0,
+  "srp_area_m2": 10.0,
+
+  "thrust_mN": 100.0,
+  "isp_s": 1500.0,
+  "max_power_kw": 1.5,
+
+  "report_step_s": 30.0,
+  "locator_step_s": 10.0,
+  "f107": 150.0,
+  "f107a": 150.0,
+
+  "template_vars": {
+    "gravity_degree": 20,
+    "gravity_order": 20
+  },
+
+  "tolerances": {
+    "sma_drift_km_per_day": 0.02,
+    "duty_cycle_fraction": 0.02
+  },
+
+  "acceptance_criteria": [
+    "Net secular SMA drift approximately 0",
+    "Duty-cycle matches sunlight fraction",
+    "Eclipse boundaries deterministic"
+  ]
+}

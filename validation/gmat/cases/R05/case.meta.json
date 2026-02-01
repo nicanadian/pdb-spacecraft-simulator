@@ -1,0 +1,40 @@
+{
+  "case_id": "R05",
+  "name": "Force Models",
+  "description": "Force model comparison (gravity, drag, SRP)",
+  "source_script": "Ex_ForceModels.script",
+  "template_name": "R05_force_models.tpl",
+  "category": "force_models",
+  "orbit_regime": "LEO",
+  "propulsion": "none",
+  "tier": "A",
+
+  "spacecraft_name": "ValidationSC",
+  "sma_km": 6878.137,
+  "ecc": 0.0001,
+  "inc_deg": 53.0,
+  "raan_deg": 0.0,
+  "aop_deg": 0.0,
+  "ta_deg": 0.0,
+
+  "dry_mass_kg": 450.0,
+  "propellant_kg": 0.0,
+  "drag_area_m2": 5.0,
+  "srp_area_m2": 10.0,
+
+  "report_step_s": 60.0,
+  "f107": 150.0,
+  "f107a": 150.0,
+
+  "template_vars": {
+    "gravity_degree": 4,
+    "gravity_order": 4,
+    "include_drag": true,
+    "include_srp": true
+  },
+
+  "tolerances": {
+    "position_rms_km": 1.0,
+    "velocity_rms_m_s": 1.0
+  }
+}

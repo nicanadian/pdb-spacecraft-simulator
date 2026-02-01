@@ -1,0 +1,40 @@
+{
+  "case_id": "R01",
+  "name": "Finite Burn",
+  "description": "Basic finite burn maneuver with chemical thruster",
+  "source_script": "Ex_FiniteBurn.script",
+  "template_name": "R01_finite_burn.tpl",
+  "category": "finite_burn",
+  "orbit_regime": "LEO",
+  "propulsion": "chemical_fb",
+  "tier": "A",
+
+  "spacecraft_name": "ValidationSC",
+  "sma_km": 6878.137,
+  "ecc": 0.0001,
+  "inc_deg": 53.0,
+  "raan_deg": 0.0,
+  "aop_deg": 0.0,
+  "ta_deg": 0.0,
+
+  "dry_mass_kg": 450.0,
+  "propellant_kg": 50.0,
+  "drag_area_m2": 5.0,
+  "srp_area_m2": 10.0,
+
+  "report_step_s": 60.0,
+
+  "template_vars": {
+    "thrust_n": 500,
+    "isp_chemical": 300,
+    "burn_duration_s": 60,
+    "include_drag": false,
+    "include_srp": false
+  },
+
+  "tolerances": {
+    "sma_km": 0.1,
+    "ecc": 0.0001,
+    "mass_kg": 0.01
+  }
+}
