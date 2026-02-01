@@ -22,6 +22,7 @@ from sim.core.types import (
 )
 from sim.core.config import create_sim_config, setup_logging
 from sim.engine import simulate
+from sim.io.aerie_parser import load_plan_file, detect_plan_format
 
 
 @click.group()
@@ -42,31 +43,29 @@ def cli(ctx, verbose):
 @click.option("--inclination", "-i", type=float, default=53.0, help="Inclination (deg)")
 @click.option("--fidelity", "-f", type=click.Choice(["LOW", "MEDIUM", "HIGH"]), default="LOW")
 @click.option("--output", "-o", type=click.Path(), default="runs", help="Output directory")
-def run(plan, config, tle, altitude, inclination, fidelity, output):
+@click.option(
+    "--format",
+    "plan_format",
+    type=click.Choice(["auto", "aerie", "normalized"]),
+    default="auto",
+    help="Plan format (auto-detected by default)",
+)
+def run(plan, config, tle, altitude, inclination, fidelity, output, plan_format):
     """Run a simulation with given plan."""
     logger = logging.getLogger(__name__)
 
-    # Load plan
+    # Load plan with format detection
     logger.info(f"Loading plan: {plan}")
+    format_hint = None if plan_format == "auto" else plan_format
+
+    # Detect format for logging
     with open(plan) as f:
         plan_data = json.load(f)
+    detected_format = detect_plan_format(plan_data)
+    if plan_format == "auto":
+        logger.info(f"Detected plan format: {detected_format}")
 
-    # Parse activities
-    activities = []
-    for act in plan_data.get("activities", []):
-        activities.append(Activity(
-            activity_id=act["activity_id"],
-            activity_type=act["activity_type"],
-            start_time=datetime.fromisoformat(act["start_time"]),
-            end_time=datetime.fromisoformat(act["end_time"]),
-            parameters=act.get("parameters", {}),
-        ))
-
-    plan_input = PlanInput(
-        spacecraft_id=plan_data.get("spacecraft_id", "SC001"),
-        plan_id=plan_data.get("plan_id", "plan_001"),
-        activities=activities,
-    )
+    plan_input = load_plan_file(plan, format_hint=format_hint)
 
     # Load or create config
     if config:

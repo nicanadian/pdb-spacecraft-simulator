@@ -1,0 +1,182 @@
+{
+  "plan_id": 101,
+  "name": "LEO Operational Day",
+  "spacecraft_id": "LEO-SAT-001",
+  "start_time": "2025-01-15T00:00:00Z",
+  "duration": "P1D",
+  "activities": [
+    {
+      "id": 1,
+      "type": "momentum_desat",
+      "name": "Morning Momentum Desaturation",
+      "anchor_id": null,
+      "anchored_to_start": true,
+      "start_offset": "PT0S",
+      "arguments": {
+        "duration": "PT30M",
+        "wheel_momentum_nms": 0.5,
+        "target_momentum_nms": 0.05,
+        "mtq_dipole_am2": 1.0,
+        "desat_power_w": 20.0
+      },
+      "metadata": {
+        "priority": "high",
+        "subsystem": "adcs"
+      },
+      "tags": ["adcs", "maintenance"]
+    },
+    {
+      "id": 2,
+      "type": "eo_collect",
+      "name": "New York City Imaging",
+      "anchor_id": 1,
+      "anchored_to_start": false,
+      "start_offset": "PT30M",
+      "arguments": {
+        "duration": "PT15M",
+        "target_id": "target_nyc",
+        "target_lat_deg": 40.7128,
+        "target_lon_deg": -74.0060,
+        "priority": 1,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 5,
+        "sensor_power_w": 100.0
+      },
+      "metadata": {
+        "customer": "NOAA",
+        "order_id": "ORD-2025-001"
+      },
+      "tags": ["imaging", "priority-1"]
+    },
+    {
+      "id": 3,
+      "type": "eo_collect",
+      "name": "London Imaging",
+      "anchor_id": 2,
+      "anchored_to_start": false,
+      "start_offset": "PT1H15M",
+      "arguments": {
+        "duration": "PT15M",
+        "target_id": "target_london",
+        "target_lat_deg": 51.5074,
+        "target_lon_deg": -0.1278,
+        "priority": 2,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 3,
+        "sensor_power_w": 100.0
+      },
+      "metadata": {
+        "customer": "ESA",
+        "order_id": "ORD-2025-002"
+      },
+      "tags": ["imaging", "priority-2"]
+    },
+    {
+      "id": 4,
+      "type": "downlink",
+      "name": "Svalbard Pass",
+      "anchor_id": 3,
+      "anchored_to_start": false,
+      "start_offset": "PT1H",
+      "arguments": {
+        "duration": "PT15M",
+        "station_id": "svalbard",
+        "band": "X",
+        "data_rate_mbps": 150.0,
+        "tx_power_w": 50.0,
+        "min_elevation_deg": 10.0
+      },
+      "metadata": {
+        "ground_station_operator": "KSAT"
+      },
+      "tags": ["comms", "x-band"]
+    },
+    {
+      "id": 5,
+      "type": "eo_collect",
+      "name": "Tokyo Imaging",
+      "anchor_id": 4,
+      "anchored_to_start": false,
+      "start_offset": "PT1H45M",
+      "arguments": {
+        "duration": "PT15M",
+        "target_id": "target_tokyo",
+        "target_lat_deg": 35.6762,
+        "target_lon_deg": 139.6503,
+        "priority": 1,
+        "max_cross_track_deg": 30.0,
+        "max_along_track_deg": 5.0,
+        "num_frames": 4,
+        "sensor_power_w": 100.0
+      },
+      "metadata": {
+        "customer": "JAXA",
+        "order_id": "ORD-2025-003"
+      },
+      "tags": ["imaging", "priority-1"]
+    },
+    {
+      "id": 6,
+      "type": "downlink",
+      "name": "Fairbanks Pass",
+      "anchor_id": 5,
+      "anchored_to_start": false,
+      "start_offset": "PT1H45M",
+      "arguments": {
+        "duration": "PT15M",
+        "station_id": "fairbanks",
+        "band": "X",
+        "data_rate_mbps": 150.0,
+        "tx_power_w": 50.0,
+        "min_elevation_deg": 10.0
+      },
+      "metadata": {
+        "ground_station_operator": "NASA"
+      },
+      "tags": ["comms", "x-band"]
+    },
+    {
+      "id": 7,
+      "type": "station_keeping",
+      "name": "Altitude Maintenance",
+      "anchor_id": 6,
+      "anchored_to_start": false,
+      "start_offset": "PT1H45M",
+      "arguments": {
+        "duration": "PT30M",
+        "maneuver_type": "altitude",
+        "target_altitude_km": 500.0,
+        "altitude_tolerance_km": 5.0,
+        "thrust_n": 0.1,
+        "isp_s": 1500.0,
+        "power_w": 1500.0
+      },
+      "metadata": {
+        "maneuver_id": "SK-001"
+      },
+      "tags": ["propulsion", "maintenance"]
+    },
+    {
+      "id": 8,
+      "type": "momentum_desat",
+      "name": "Afternoon Momentum Desaturation",
+      "anchor_id": 7,
+      "anchored_to_start": false,
+      "start_offset": "PT1H30M",
+      "arguments": {
+        "duration": "PT30M",
+        "wheel_momentum_nms": 0.3,
+        "target_momentum_nms": 0.05,
+        "mtq_dipole_am2": 1.0,
+        "desat_power_w": 20.0
+      },
+      "metadata": {
+        "priority": "medium",
+        "subsystem": "adcs"
+      },
+      "tags": ["adcs", "maintenance"]
+    }
+  ]
+}
