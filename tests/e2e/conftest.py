@@ -15,13 +15,13 @@ def pytest_configure(config):
 @pytest.fixture(scope="session")
 def aerie_url():
     """Get Aerie UI URL from environment or use default."""
-    return os.environ.get("AERIE_UI_URL", "http://localhost:8080")
+    return os.environ.get("AERIE_UI_URL", "http://localhost")
 
 
 @pytest.fixture(scope="session")
 def graphql_url():
     """Get GraphQL endpoint URL from environment or use default."""
-    return os.environ.get("AERIE_GRAPHQL_URL", "http://localhost:9000/v1/graphql")
+    return os.environ.get("AERIE_GRAPHQL_URL", "http://localhost:8080/v1/graphql")
 
 
 @pytest.fixture(scope="session")

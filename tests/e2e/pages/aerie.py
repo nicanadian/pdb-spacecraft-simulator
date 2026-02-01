@@ -74,8 +74,15 @@ class AeriePage:
         """Get list of mission models displayed."""
         models = []
 
-        # Wait for model list to load
-        self.page.wait_for_selector("[data-testid='model-row'], .model-row, tr[data-model-id]", timeout=5000)
+        # Try to wait for model list to load, but don't fail if none exist
+        try:
+            self.page.wait_for_selector(
+                "[data-testid='model-row'], .model-row, tr[data-model-id]",
+                timeout=3000,
+            )
+        except Exception:
+            # No models found - return empty list
+            return models
 
         rows = self.page.query_selector_all("[data-testid='model-row'], .model-row, tr[data-model-id]")
 
