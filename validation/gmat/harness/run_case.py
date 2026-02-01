@@ -137,11 +137,14 @@ class CaseRunner:
             isolated=True,
         )
 
-        # Find output artifacts
-        ephemeris_path = self._find_output_file(result.working_dir, "ephemeris")
-        keplerian_path = self._find_output_file(result.working_dir, "keplerian")
-        mass_path = self._find_output_file(result.working_dir, "mass")
-        truth_path = self._find_output_file(result.working_dir, "truth")
+        # Find output artifacts - check both working_dir and case_output_dir
+        # GMAT scripts write to output_dir specified in template (case_output_dir),
+        # not necessarily to the isolated working_dir
+        search_dirs = [result.working_dir, case_output_dir]
+        ephemeris_path = self._find_output_file_in_dirs(search_dirs, "ephemeris")
+        keplerian_path = self._find_output_file_in_dirs(search_dirs, "keplerian")
+        mass_path = self._find_output_file_in_dirs(search_dirs, "mass")
+        truth_path = self._find_output_file_in_dirs(search_dirs, "truth")
 
         return CaseResult(
             case_id=case_id,
@@ -328,6 +331,18 @@ class CaseRunner:
             for path in working_dir.glob(f"**/{prefix}*{ext}"):
                 return path
 
+        return None
+
+    def _find_output_file_in_dirs(
+        self,
+        dirs: List[Optional[Path]],
+        prefix: str,
+    ) -> Optional[Path]:
+        """Find an output file by prefix in multiple directories."""
+        for dir_path in dirs:
+            result = self._find_output_file(dir_path, prefix)
+            if result is not None:
+                return result
         return None
 
     def run_tier(

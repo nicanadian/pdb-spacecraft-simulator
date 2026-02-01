@@ -239,6 +239,38 @@ class TestCaseRegistry:
 class TestTruthFiles:
     """Tests for truth file generation and loading."""
 
+    @tier_a
+    @pytest.mark.parametrize("case_id", TIER_A_CASE_IDS)
+    def test_truth_file_exists(self, case_id: str):
+        """Verify truth file exists for all Tier A cases."""
+        baselines_dir = Path(__file__).parent.parent / "baselines" / "gmat"
+        truth_path = baselines_dir / case_id / "truth_v1.json"
+        assert truth_path.exists(), f"Truth file not found for {case_id}"
+
+    @tier_a
+    @pytest.mark.parametrize("case_id", TIER_A_CASE_IDS)
+    def test_truth_file_loads(self, case_id: str):
+        """Verify truth file can be loaded and has required fields."""
+        from validation.gmat.harness.generate_truth import TruthGenerator
+
+        generator = TruthGenerator()
+        truth = generator.load_truth(case_id, version="v1")
+
+        assert truth.case_id == case_id
+        assert truth.schema_version == "1.0"
+        assert truth.initial is not None
+        assert truth.final is not None
+        assert truth.initial.sma_km > 0
+        assert truth.final.sma_km > 0
+
+    @tier_b
+    @pytest.mark.parametrize("case_id", TIER_B_CASE_IDS)
+    def test_tier_b_truth_file_exists(self, case_id: str):
+        """Verify truth file exists for all Tier B cases."""
+        baselines_dir = Path(__file__).parent.parent / "baselines" / "gmat"
+        truth_path = baselines_dir / case_id / "truth_v1.json"
+        assert truth_path.exists(), f"Truth file not found for {case_id}"
+
     @pytest.mark.parametrize("case_id", TIER_A_CASE_IDS[:3])  # Test first 3
     def test_truth_checkpoint_schema(self, case_id: str):
         """Verify TruthCheckpoint schema is valid."""
