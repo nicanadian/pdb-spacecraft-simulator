@@ -15,6 +15,7 @@ Test Files:
     test_eclipse_contacts.py   - Eclipse and contact window tests
     test_baseline_regression.py - Baseline regression tests
     test_full_pipeline.py      - Complete end-to-end tests
+    test_fidelity.py           - MEDIUM/HIGH fidelity + cross-fidelity tests
 
 Test Tiers
 ==========
@@ -73,4 +74,23 @@ Environment Variables
     AERIE_GRAPHQL_URL  - Aerie GraphQL endpoint (default: http://localhost:8080/v1/graphql)
     VIEWER_URL         - Viewer URL (default: http://localhost:3002)
     MCP_SERVER_URL     - MCP server URL (default: http://localhost:8765)
+
+Basilisk Integration
+====================
+
+Tests in test_fidelity.py require Basilisk for MEDIUM/HIGH fidelity testing.
+These tests are SKIPPED (not failed) when Basilisk is not installed.
+
+To install Basilisk:
+    pip install Basilisk
+
+To run fidelity tests:
+    pytest tests/ete/test_fidelity.py -v
+
+Basilisk-dependent tests:
+    - TestMediumFidelity::*          - MEDIUM fidelity with Basilisk propagator
+    - TestHighFidelity::*            - HIGH fidelity tests
+    - TestCrossFidelityComparison::* - LOW vs MEDIUM comparison
+
+Non-Basilisk tests always run using SGP4 (Fidelity.LOW).
 """
