@@ -1,0 +1,275 @@
+/**
+ * Glassmorphism Utilities
+ * Provides reusable glass panel effects
+ */
+
+/* ============================================
+   BASE GLASS PANEL
+   ============================================ */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.glass-panel-dark {
+  background: var(--glass-dark-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-dark-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ============================================
+   PANEL VARIANTS
+   ============================================ */
+.glass-sidebar {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--neutral-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.glass-sidebar-left {
+  border-right: 1px solid var(--neutral-border);
+  border-left: none;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.glass-sidebar-right {
+  border-left: 1px solid var(--neutral-border);
+  border-right: none;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+/* ============================================
+   FLOATING PANELS (over 3D viewport)
+   ============================================ */
+.glass-floating {
+  position: absolute;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+}
+
+.glass-floating-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--neutral-border);
+  font-weight: var(--font-semibold);
+  color: var(--slate-800);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.glass-floating-content {
+  padding: var(--space-4);
+}
+
+/* ============================================
+   CARD STYLES
+   ============================================ */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4);
+  transition: box-shadow var(--transition-normal),
+              transform var(--transition-normal);
+}
+
+.glass-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.glass-card-interactive {
+  cursor: pointer;
+}
+
+.glass-card-interactive:hover {
+  border-color: var(--electric-teal);
+}
+
+/* ============================================
+   ALERT CARDS
+   ============================================ */
+.glass-alert {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4);
+  position: relative;
+}
+
+.glass-alert::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.glass-alert-failure::before {
+  background: var(--alert-failure);
+}
+
+.glass-alert-warning::before {
+  background: var(--alert-warning);
+}
+
+.glass-alert-info::before {
+  background: var(--alert-info);
+}
+
+.glass-alert-success::before {
+  background: var(--alert-success);
+}
+
+/* ============================================
+   MODAL & OVERLAY
+   ============================================ */
+.glass-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: var(--z-modal-backdrop);
+}
+
+.glass-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  z-index: var(--z-modal);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+/* ============================================
+   TOOLTIP
+   ============================================ */
+.glass-tooltip {
+  position: absolute;
+  background: var(--deep-space-navy);
+  color: var(--ghost-slate);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-tooltip);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ============================================
+   BRANCH MODE INDICATOR (Teal Glow)
+   ============================================ */
+.branch-mode-indicator {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.branch-mode-glow {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: var(--electric-teal);
+  box-shadow:
+    0 0 8px 2px var(--electric-teal),
+    0 0 16px 4px rgba(8, 145, 178, 0.5),
+    0 0 24px 6px rgba(8, 145, 178, 0.25);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 8px 2px var(--electric-teal),
+      0 0 16px 4px rgba(8, 145, 178, 0.5),
+      0 0 24px 6px rgba(8, 145, 178, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 12px 4px var(--electric-teal),
+      0 0 24px 8px rgba(8, 145, 178, 0.6),
+      0 0 36px 12px rgba(8, 145, 178, 0.3);
+  }
+}
+
+/* ============================================
+   STATUS DOTS
+   ============================================ */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.status-dot-failure {
+  background: var(--alert-failure);
+}
+
+.status-dot-warning {
+  background: var(--alert-warning);
+}
+
+.status-dot-info {
+  background: var(--alert-info);
+}
+
+.status-dot-success {
+  background: var(--alert-success);
+}
+
+/* ============================================
+   DASHED PATH PATTERN (for What-If)
+   ============================================ */
+.dashed-path {
+  stroke-dasharray: 8 4;
+  stroke: var(--electric-teal);
+  stroke-width: 2;
+  fill: none;
+}
+
+.solid-path {
+  stroke: var(--electric-teal);
+  stroke-width: 2;
+  fill: none;
+}
+
+.ghost-path {
+  stroke: var(--color-baseline);
+  stroke-width: 2;
+  fill: none;
+  opacity: 0.4;
+}

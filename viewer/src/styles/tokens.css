@@ -1,0 +1,174 @@
+/**
+ * Mission Visualization UI - Design Tokens
+ * "Midnight & Slate" Design System
+ */
+
+:root {
+  /* ============================================
+     PRIMARY STRUCTURE
+     ============================================ */
+  --deep-space-navy: #0F172A;     /* Navigation, headers, structural weight */
+  --electric-teal: #0891B2;       /* Active states, primary buttons, What-If */
+  --ghost-slate: #F8FAFC;         /* Primary background (light mode) */
+  --neutral-border: #E2E8F0;      /* 1px borders, region definition */
+
+  /* Slate scale for text hierarchy */
+  --slate-900: #0F172A;
+  --slate-800: #1E293B;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-500: #64748B;
+  --slate-400: #94A3B8;
+  --slate-300: #CBD5E1;
+  --slate-200: #E2E8F0;
+  --slate-100: #F1F5F9;
+  --slate-50: #F8FAFC;
+
+  /* ============================================
+     SEMANTIC STATES - Geometry Encoding
+     ============================================ */
+  --color-current: #0891B2;                    /* Solid paths, active entities */
+  --color-baseline: rgba(15, 23, 42, 0.4);     /* Ghost overlays */
+  --color-branch: #0891B2;                     /* Dashed what-if paths */
+  --color-uncertainty: rgba(8, 145, 178, 0.15); /* Translucent uncertainty envelope */
+
+  /* ============================================
+     ALERTS & STATUS
+     ============================================ */
+  --alert-failure: #DC2626;       /* Red - critical failures */
+  --alert-warning: #F59E0B;       /* Amber - warnings */
+  --alert-info: #3B82F6;          /* Blue - informational */
+  --alert-success: #10B981;       /* Green - positive confirmation */
+
+  /* Alert backgrounds (10% opacity) */
+  --alert-failure-bg: rgba(220, 38, 38, 0.1);
+  --alert-warning-bg: rgba(245, 158, 11, 0.1);
+  --alert-info-bg: rgba(59, 130, 246, 0.1);
+  --alert-success-bg: rgba(16, 185, 129, 0.1);
+
+  /* ============================================
+     GLASS EFFECTS - Glassmorphism
+     ============================================ */
+  --glass-bg: rgba(248, 250, 252, 0.85);
+  --glass-blur: blur(12px);
+  --glass-border: rgba(226, 232, 240, 0.6);
+  --glass-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                  0 2px 4px -2px rgba(0, 0, 0, 0.1);
+
+  /* Dark glass variant */
+  --glass-dark-bg: rgba(15, 23, 42, 0.75);
+  --glass-dark-border: rgba(51, 65, 85, 0.5);
+
+  /* ============================================
+     ELEVATION & SHADOWS
+     ============================================ */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+               0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+               0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+               0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* ============================================
+     SPACING SCALE (4px base)
+     ============================================ */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ============================================
+     BORDER RADIUS
+     ============================================ */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ============================================
+     TYPOGRAPHY
+     ============================================ */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* Font sizes */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 20px;
+  --text-3xl: 24px;
+
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Font weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* ============================================
+     TRANSITIONS
+     ============================================ */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+  --transition-camera: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ============================================
+     Z-INDEX LAYERS
+     ============================================ */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-tooltip: 600;
+  --z-notification: 700;
+
+  /* ============================================
+     PANEL DIMENSIONS
+     ============================================ */
+  --panel-min-width: 280px;
+  --panel-default-width: 320px;
+  --panel-max-width: 480px;
+  --header-height: 52px;
+  --footer-height: 56px;
+  --sidebar-nav-width: 56px;
+}
+
+/* ============================================
+   DARK MODE OVERRIDES
+   ============================================ */
+[data-theme="dark"] {
+  --ghost-slate: #1E293B;
+  --neutral-border: #334155;
+  --glass-bg: rgba(30, 41, 59, 0.85);
+  --glass-border: rgba(51, 65, 85, 0.6);
+
+  /* Invert text colors */
+  --slate-900: #F8FAFC;
+  --slate-800: #F1F5F9;
+  --slate-700: #E2E8F0;
+  --slate-600: #CBD5E1;
+  --slate-500: #94A3B8;
+  --slate-400: #64748B;
+  --slate-300: #475569;
+  --slate-200: #334155;
+  --slate-100: #1E293B;
+  --slate-50: #0F172A;
+}

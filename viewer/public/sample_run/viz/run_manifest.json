@@ -1,0 +1,17 @@
+{
+    "run_id": "test_run_001",
+    "spacecraft_id": "SAT-001",
+    "time_range": {
+        "start": "2025-01-15T00:00:00Z",
+        "end": "2025-01-15T02:00:00Z"
+    },
+    "fidelity": "MEDIUM",
+    "orbit": {
+        "sma_km": 6878.14,
+        "ecc": 0.001,
+        "inc_deg": 53.0,
+        "raan_deg": 0.0,
+        "aop_deg": 0.0,
+        "ta_deg": 0.0
+    }
+}

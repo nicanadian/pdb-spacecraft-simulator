@@ -1,0 +1,87 @@
+[
+    {
+        "id": "document",
+        "name": "Satellite Simulation",
+        "version": "1.0",
+        "clock": {
+            "interval": "2025-01-15T00:00:00Z/2025-01-15T02:00:00Z",
+            "currentTime": "2025-01-15T00:00:00Z",
+            "multiplier": 60,
+            "range": "LOOP_STOP",
+            "step": "SYSTEM_CLOCK_MULTIPLIER"
+        }
+    },
+    {
+        "id": "satellite_1",
+        "name": "SAT-001",
+        "description": "Test satellite in 500km LEO orbit",
+        "availability": "2025-01-15T00:00:00Z/2025-01-15T02:00:00Z",
+        "billboard": {
+            "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAE2SURBVDiNpZM9SwNBEIafvVxiooWFhY2FjZ2F/6Bfhb9BLAX/gIWFhYWNnYWdhYioiCJBwcJCQbHwA0RFgo2FRbTwuGR33XHusnc5E3Bg2Zmd5515d2YFjlUED94A6j5APgC8ZNci4JrrRYAP4NbvywGz2bU/YKMB8hMBuABuSpIsG8AwMJBdy4Bp4L5x/5+Yv/8Y4AS4zJJk0UcgYBO4EkJYIYQRoB9ozK49Ao9eYx44zZJkYrMsyxpYBu6AZ+ANePHrALAF7GfJchbQC7QDvcBjliQbwBRwDtxkSTIJIEnCvHcQWMyS5LMCaAeiwFcF8FMB/BSAL0AX0OYD5ANASwH8WQG+moDfL9ACJH2A3wqgoYB/rcA3HagGmNsB/FcB2B0/BHizJPkpLgF2gEPg2kv8Bv0AxqeA2Q3rAAAAAElFTkSuQmCC",
+            "scale": 1.5,
+            "show": true
+        },
+        "label": {
+            "text": "SAT-001",
+            "font": "14pt sans-serif",
+            "style": "FILL_AND_OUTLINE",
+            "fillColor": {
+                "rgba": [255, 255, 0, 255]
+            },
+            "outlineColor": {
+                "rgba": [0, 0, 0, 255]
+            },
+            "outlineWidth": 2,
+            "pixelOffset": {
+                "cartesian2": [12, 0]
+            },
+            "show": true
+        },
+        "path": {
+            "show": true,
+            "width": 2,
+            "material": {
+                "solidColor": {
+                    "color": {
+                        "rgba": [0, 255, 255, 255]
+                    }
+                }
+            },
+            "leadTime": 2700,
+            "trailTime": 2700
+        },
+        "position": {
+            "interpolationAlgorithm": "LAGRANGE",
+            "interpolationDegree": 5,
+            "referenceFrame": "FIXED",
+            "epoch": "2025-01-15T00:00:00Z",
+            "cartographicDegrees": [
+                0,    0.0, 0.0, 500000,
+                300,  18.0, 8.0, 500000,
+                600,  36.0, 15.0, 500000,
+                900,  54.0, 22.0, 500000,
+                1200, 72.0, 28.0, 500000,
+                1500, 90.0, 32.0, 500000,
+                1800, 108.0, 35.0, 500000,
+                2100, 126.0, 36.0, 500000,
+                2400, 144.0, 35.0, 500000,
+                2700, 162.0, 32.0, 500000,
+                3000, 180.0, 28.0, 500000,
+                3300, 198.0, 22.0, 500000,
+                3600, 216.0, 15.0, 500000,
+                3900, 234.0, 8.0, 500000,
+                4200, 252.0, 0.0, 500000,
+                4500, 270.0, -8.0, 500000,
+                4800, 288.0, -15.0, 500000,
+                5100, 306.0, -22.0, 500000,
+                5400, 324.0, -28.0, 500000,
+                5700, 342.0, -32.0, 500000,
+                6000, 360.0, -35.0, 500000,
+                6300, 378.0, -36.0, 500000,
+                6600, 396.0, -35.0, 500000,
+                6900, 414.0, -32.0, 500000,
+                7200, 432.0, -28.0, 500000
+            ]
+        }
+    }
+]
