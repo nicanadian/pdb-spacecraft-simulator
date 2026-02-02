@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 # Import GMAT case registry for case IDs
@@ -24,6 +24,14 @@ except ImportError:
     TIER_B_CASES = []
 
 
+# =============================================================================
+# DETERMINISTIC REFERENCE EPOCH
+# =============================================================================
+
+# Must match conftest.py
+REFERENCE_EPOCH = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+
 @dataclass
 class ScenarioData:
     """Test scenario data."""
@@ -37,8 +45,9 @@ class ScenarioData:
     activities: List[Dict] = field(default_factory=list)
 
     def __post_init__(self):
+        # Use deterministic reference epoch, not datetime.now()
         if self.start_time is None:
-            self.start_time = datetime.now(timezone.utc) + timedelta(hours=1)
+            self.start_time = REFERENCE_EPOCH
 
 
 @dataclass
@@ -50,6 +59,11 @@ class CompletedRunData:
     event_count: int
     constraint_violations: int
     manifest: Dict = field(default_factory=dict)
+
+    # Optional fields for real simulation runs
+    initial_state: Optional[Any] = None
+    final_state: Optional[Any] = None
+    sim_result: Optional[Any] = None
 
     @classmethod
     def from_run_dir(cls, run_dir: Path, case_id: str) -> "CompletedRunData":
@@ -99,6 +113,10 @@ class CompletedRunData:
             manifest=manifest,
         )
 
+    def is_synthetic(self) -> bool:
+        """Check if this run data is synthetic (not from real simulation)."""
+        return self.manifest.get("_synthetic", False) or self.sim_result is None
+
 
 def get_tier_a_case_ids() -> List[str]:
     """Get list of Tier A case IDs for parametrized tests."""
@@ -125,13 +143,14 @@ def create_test_plan(
 
     Args:
         case_id: GMAT case ID
-        start_time: Plan start time (defaults to now + 1 hour)
+        start_time: Plan start time (defaults to REFERENCE_EPOCH)
 
     Returns:
         Plan dictionary suitable for simulation
     """
+    # Use deterministic epoch, not datetime.now()
     if start_time is None:
-        start_time = datetime.now(timezone.utc) + timedelta(hours=1)
+        start_time = REFERENCE_EPOCH
 
     # Get case definition if available
     duration_hours = 24.0
@@ -194,7 +213,61 @@ def create_test_plan(
     }
 
 
-# Sample TLEs for testing
+# =============================================================================
+# DETERMINISTIC INITIAL STATES
+# =============================================================================
+
+# Standard initial states for deterministic testing
+STANDARD_INITIAL_STATES = {
+    "LEO_400KM_CIRCULAR": {
+        "position_eci": [6778.137, 0.0, 0.0],  # km
+        "velocity_eci": [0.0, 7.6686, 0.0],    # km/s
+        "mass_kg": 500.0,
+        "description": "400 km circular equatorial orbit",
+    },
+    "LEO_400KM_ISS_INCL": {
+        "position_eci": [6778.137, 0.0, 0.0],  # km
+        "velocity_eci": [0.0, 6.024, 4.766],   # km/s, 51.6° inclination
+        "mass_kg": 500.0,
+        "description": "400 km circular orbit at ISS inclination (51.6°)",
+    },
+    "SSO_600KM": {
+        "position_eci": [6978.137, 0.0, 0.0],  # km
+        "velocity_eci": [0.0, 0.598, 7.509],   # km/s, ~97.8° inclination
+        "mass_kg": 500.0,
+        "description": "600 km sun-synchronous orbit",
+    },
+    "VLEO_300KM": {
+        "position_eci": [6678.137, 0.0, 0.0],  # km
+        "velocity_eci": [0.0, 7.726, 0.0],     # km/s
+        "mass_kg": 500.0,
+        "description": "300 km VLEO circular equatorial orbit",
+    },
+}
+
+
+def get_standard_initial_state(state_name: str) -> Dict:
+    """
+    Get a standard initial state for testing.
+
+    Args:
+        state_name: Name of the standard state
+
+    Returns:
+        Initial state dictionary
+    """
+    if state_name not in STANDARD_INITIAL_STATES:
+        raise ValueError(
+            f"Unknown state: {state_name}. "
+            f"Available: {list(STANDARD_INITIAL_STATES.keys())}"
+        )
+    return STANDARD_INITIAL_STATES[state_name].copy()
+
+
+# =============================================================================
+# SAMPLE TLEs
+# =============================================================================
+
 SAMPLE_TLES = {
     "ISS": (
         "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9992\n"

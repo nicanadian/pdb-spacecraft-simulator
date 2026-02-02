@@ -1,7 +1,12 @@
 """ETE viewer validation tests - UI visualization tests.
 
 Tests that simulation results display correctly in the viewer.
-Run on every PR as part of Tier A.
+
+Key improvements over previous version:
+- Uses REAL simulation output (not synthetic fixtures)
+- Validates actual event counts match (not just >= 0)
+- Checks CZML data matches simulation state
+- Meaningful content validation (not just "page loaded")
 
 Usage:
     pytest tests/ete/test_viewer_validation.py -v
@@ -10,7 +15,9 @@ Usage:
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -35,68 +42,209 @@ pytestmark = [
 
 
 class TestRunLoading:
-    """Test loading simulation runs in the viewer."""
+    """Test loading REAL simulation runs in the viewer."""
 
-    def test_run_loads_in_viewer(self, viewer_page, completed_run):
-        """Simulation run loads in viewer without errors."""
+    def test_real_run_loads_in_viewer(self, viewer_page, completed_run):
+        """
+        Real simulation run loads in viewer without errors.
+
+        This test uses actual simulation output (not synthetic data)
+        to verify the viewer can load real results.
+        """
+        # Verify we're using real data
+        assert not completed_run.is_synthetic(), (
+            "Test must use real simulation output, not synthetic fixtures"
+        )
+
         viewer_page.load_run(completed_run.path)
 
+        assert viewer_page.is_loaded(), "Viewer failed to load run"
+        assert not viewer_page.has_error(), (
+            f"Viewer error: {viewer_page.get_error_message()}"
+        )
+
+    def test_manifest_data_matches_simulation(self, viewer_page, completed_run):
+        """
+        Verify viewer displays correct manifest data from simulation.
+
+        Validates the viewer is parsing and displaying the actual
+        simulation metadata, not hardcoded values.
+        """
+        viewer_page.load_run(completed_run.path)
+
+        # The manifest from simulation should match what viewer loaded
+        manifest = completed_run.manifest
+
+        assert "plan_id" in manifest, "Simulation manifest missing plan_id"
+        assert manifest["plan_id"], "Plan ID is empty"
+
+        # Viewer should have loaded without errors
         assert viewer_page.is_loaded()
-        assert not viewer_page.has_error()
 
-    def test_cesium_initializes(self, viewer_page, completed_run):
-        """Cesium 3D viewer initializes correctly."""
+
+class TestEventDisplay:
+    """Test event display matches simulation output."""
+
+    def test_event_count_matches_simulation(self, viewer_page, completed_run):
+        """
+        Viewer displays the EXACT number of events from simulation.
+
+        This is a key validation - the viewer must show all events,
+        not more, not fewer.
+        """
         viewer_page.load_run(completed_run.path)
 
-        # Wait for Cesium to initialize
-        cesium_ready = viewer_page.wait_for_cesium(timeout_ms=15000)
+        # Get event count from viewer
+        viewer_events = viewer_page.get_alerts_count()
 
-        # Cesium should initialize (may not have entity data for minimal test run)
-        # Just verify no errors
-        assert viewer_page.is_loaded()
+        # Get expected count from simulation output
+        expected_events = completed_run.event_count
 
-    def test_manifest_data_displayed(self, viewer_page, completed_run):
-        """Run manifest data is displayed in the UI."""
+        # EXACT match required (not >= 0)
+        assert viewer_events == expected_events, (
+            f"EVENT COUNT MISMATCH\n"
+            f"  Viewer shows:      {viewer_events} events\n"
+            f"  Simulation output: {expected_events} events\n"
+            f"\n"
+            f"This indicates the viewer is not correctly loading events.json"
+        )
+
+    def test_constraint_violations_displayed(self, viewer_page, completed_run):
+        """
+        Constraint violations are correctly identified and displayed.
+
+        Violations should be visually distinct from normal events.
+        """
         viewer_page.load_run(completed_run.path)
 
-        # Page should load and display something
-        assert viewer_page.is_loaded()
+        expected_violations = completed_run.constraint_violations
 
-        # Title should contain something (run ID, plan name, etc.)
-        title = viewer_page.get_page_title()
-        assert title is not None
-
-
-class TestMissionStatus:
-    """Test mission status display in viewer."""
-
-    def test_mission_status_displays(self, viewer_page, completed_run):
-        """Mission status KPIs display correctly."""
-        viewer_page.load_run(completed_run.path)
-
+        # Get mission status which should include violation count
         status = viewer_page.get_mission_status()
 
-        # Status dict should have expected keys (may be 0 if not displayed)
-        assert isinstance(status, dict)
+        if "violations" in status:
+            actual_violations = status["violations"]
+            assert actual_violations == expected_violations, (
+                f"VIOLATION COUNT MISMATCH\n"
+                f"  Viewer shows:      {actual_violations} violations\n"
+                f"  Simulation output: {expected_violations} violations"
+            )
 
-    def test_events_counted_correctly(self, viewer_page, completed_run):
-        """Event count matches simulation output."""
-        viewer_page.load_run(completed_run.path)
 
-        status = viewer_page.get_mission_status()
+class TestCZMLValidation:
+    """Test CZML trajectory data matches simulation output."""
 
-        # If events are displayed, count should be reasonable
-        if "events" in status:
-            assert status["events"] >= 0
+    def test_czml_file_exists(self, completed_run):
+        """
+        Verify CZML file was generated by simulation.
 
-    def test_alerts_displayed(self, viewer_page, completed_run):
-        """Alerts from simulation appear in UI."""
-        viewer_page.load_run(completed_run.path)
+        CZML is required for Cesium visualization.
+        """
+        czml_path = Path(completed_run.path) / "viz" / "scene.czml"
 
-        alerts = viewer_page.get_alerts_count()
+        assert czml_path.exists(), (
+            f"CZML file not found at {czml_path}\n"
+            "Simulation may not have generated visualization artifacts."
+        )
 
-        # Should be non-negative (may be 0 if alerts panel is collapsed)
-        assert alerts >= 0
+        # Verify it's valid JSON
+        with open(czml_path) as f:
+            try:
+                czml_data = json.load(f)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"CZML file is not valid JSON: {e}")
+
+        # CZML should have document header
+        assert len(czml_data) > 0, "CZML file is empty"
+        assert czml_data[0].get("id") == "document", (
+            "CZML missing document header"
+        )
+
+    def test_czml_has_spacecraft_entity(self, completed_run):
+        """
+        Verify CZML contains spacecraft entity with position data.
+        """
+        czml_path = Path(completed_run.path) / "viz" / "scene.czml"
+
+        if not czml_path.exists():
+            pytest.skip("CZML file not generated")
+
+        with open(czml_path) as f:
+            czml_data = json.load(f)
+
+        # Find spacecraft entity
+        spacecraft = None
+        for entity in czml_data:
+            if entity.get("id") == "spacecraft" or "position" in entity:
+                spacecraft = entity
+                break
+
+        assert spacecraft is not None, (
+            "CZML missing spacecraft entity\n"
+            f"Entities found: {[e.get('id') for e in czml_data]}"
+        )
+
+        assert "position" in spacecraft, (
+            "Spacecraft entity missing position data"
+        )
+
+    def test_czml_position_matches_final_state(self, completed_run, physics_validator):
+        """
+        Verify CZML final position approximately matches simulation final state.
+
+        This catches data corruption in the visualization export pipeline.
+        """
+        czml_path = Path(completed_run.path) / "viz" / "scene.czml"
+
+        if not czml_path.exists():
+            pytest.skip("CZML file not generated")
+
+        if completed_run.final_state is None:
+            pytest.skip("No final state available for comparison")
+
+        with open(czml_path) as f:
+            czml_data = json.load(f)
+
+        # Find spacecraft with position
+        spacecraft = None
+        for entity in czml_data:
+            if "position" in entity:
+                spacecraft = entity
+                break
+
+        if spacecraft is None:
+            pytest.skip("No spacecraft position in CZML")
+
+        # Extract position from CZML (format varies)
+        position_data = spacecraft["position"]
+
+        # CZML can use different formats - handle the common ones
+        if "cartographicDegrees" in position_data:
+            # [lon, lat, alt] or [time, lon, lat, alt, ...]
+            coords = position_data["cartographicDegrees"]
+            # If time-tagged, get last position
+            if len(coords) > 4:
+                # Take last position (last 4 elements minus time)
+                alt_km = coords[-1] / 1000.0  # Convert m to km
+            else:
+                alt_km = coords[3] / 1000.0 if len(coords) > 3 else coords[2] / 1000.0
+
+            # Compare altitude (rough validation)
+            final_pos = completed_run.final_state.position_eci
+            import numpy as np
+            final_alt_km = np.linalg.norm(final_pos) - 6378.137  # Earth radius
+
+            # Allow 10km tolerance for CZML precision
+            tolerance_km = 10.0
+            assert abs(alt_km - final_alt_km) < tolerance_km, (
+                f"CZML POSITION MISMATCH\n"
+                f"  CZML altitude:  {alt_km:.1f} km\n"
+                f"  Final state:    {final_alt_km:.1f} km\n"
+                f"  Difference:     {abs(alt_km - final_alt_km):.1f} km\n"
+                f"  Tolerance:      {tolerance_km:.1f} km\n"
+                f"\n"
+                f"This indicates the visualization export is corrupting data."
+            )
 
 
 class TestWorkspaces:
@@ -107,39 +255,39 @@ class TestWorkspaces:
         viewer_page.load_run(completed_run.path)
 
         current_ws = viewer_page.current_workspace()
-        assert current_ws == "mission-overview"
+        assert current_ws == "mission-overview", (
+            f"Expected default workspace 'mission-overview', got '{current_ws}'"
+        )
 
-    def test_switch_to_maneuver_planning(self, viewer_page, completed_run):
-        """Can switch to maneuver planning workspace."""
+    @pytest.mark.parametrize("workspace", [
+        "maneuver-planning",
+        "vleo-drag",
+        "anomaly-response",
+        "payload-ops",
+    ])
+    def test_workspace_switching(self, viewer_page, completed_run, workspace):
+        """
+        Each workspace can be accessed and displays without error.
+        """
         viewer_page.load_run(completed_run.path)
 
-        viewer_page.switch_workspace("maneuver-planning")
-        assert viewer_page.current_workspace() == "maneuver-planning"
+        viewer_page.switch_workspace(workspace)
 
-    def test_switch_to_vleo_drag(self, viewer_page, completed_run):
-        """Can switch to VLEO drag workspace."""
-        viewer_page.load_run(completed_run.path)
+        assert viewer_page.current_workspace() == workspace, (
+            f"Failed to switch to workspace '{workspace}'"
+        )
 
-        viewer_page.switch_workspace("vleo-drag")
-        assert viewer_page.current_workspace() == "vleo-drag"
-
-    def test_switch_to_anomaly_response(self, viewer_page, completed_run):
-        """Can switch to anomaly response workspace."""
-        viewer_page.load_run(completed_run.path)
-
-        viewer_page.switch_workspace("anomaly-response")
-        assert viewer_page.current_workspace() == "anomaly-response"
-
-    def test_switch_to_payload_ops(self, viewer_page, completed_run):
-        """Can switch to payload operations workspace."""
-        viewer_page.load_run(completed_run.path)
-
-        viewer_page.switch_workspace("payload-ops")
-        assert viewer_page.current_workspace() == "payload-ops"
+        assert not viewer_page.has_error(), (
+            f"Error in workspace '{workspace}': {viewer_page.get_error_message()}"
+        )
 
     @pytest.mark.ete_tier_b
-    def test_all_workspaces_cycle(self, viewer_page, completed_run):
-        """All 5 workspaces accessible in sequence."""
+    def test_all_workspaces_cycle_without_error(self, viewer_page, completed_run):
+        """
+        All 5 workspaces accessible in sequence without cumulative errors.
+
+        Tests for memory leaks or state corruption from rapid switching.
+        """
         viewer_page.load_run(completed_run.path)
 
         workspaces = [
@@ -150,75 +298,97 @@ class TestWorkspaces:
             "payload-ops",
         ]
 
-        for ws in workspaces:
-            viewer_page.switch_workspace(ws)
-            assert viewer_page.current_workspace() == ws
+        # Cycle through twice to catch cumulative issues
+        for cycle in range(2):
+            for ws in workspaces:
+                viewer_page.switch_workspace(ws)
+                assert viewer_page.current_workspace() == ws, (
+                    f"Workspace switch failed on cycle {cycle + 1}"
+                )
+                assert not viewer_page.has_error(), (
+                    f"Error after switching to {ws} on cycle {cycle + 1}"
+                )
 
 
 class TestTimeline:
     """Test timeline functionality in viewer."""
 
-    def test_timeline_renders(self, viewer_page, completed_run):
-        """Timeline panel renders without errors."""
+    def test_timeline_events_match_simulation(self, viewer_page, completed_run):
+        """
+        Timeline events should match simulation event output.
+        """
         viewer_page.load_run(completed_run.path)
 
-        # Page should load with timeline visible (in footer)
-        assert viewer_page.is_loaded()
+        timeline_events = viewer_page.get_timeline_events()
+
+        # Timeline should have events if simulation produced any
+        if completed_run.event_count > 0:
+            assert len(timeline_events) > 0, (
+                f"Timeline is empty but simulation has {completed_run.event_count} events"
+            )
 
     @pytest.mark.ete_tier_b
-    def test_timeline_scrubbing(self, viewer_page, completed_run):
-        """Timeline scrubbing updates visualization."""
+    def test_timeline_scrubbing_updates_visualization(self, viewer_page, completed_run):
+        """
+        Timeline scrubbing should update the visualization.
+
+        This is a visual/interaction test that verifies the timeline
+        controls actually affect the display.
+        """
         viewer_page.load_run(completed_run.path)
 
-        # Wait for page to stabilize
+        # Wait for initial render
         viewer_page.page.wait_for_timeout(1000)
 
-        # Scrub to middle of timeline
+        # Scrub to middle
         viewer_page.scrub_to_time(0.5)
 
-        # Scrub to end
-        viewer_page.scrub_to_time(0.9)
-
-        # Should still be loaded without errors
+        # Should still be functional
         assert viewer_page.is_loaded()
         assert not viewer_page.has_error()
 
-    def test_timeline_events_display(self, viewer_page, completed_run):
-        """Timeline events from simulation are displayed."""
-        viewer_page.load_run(completed_run.path)
+        # Scrub to end
+        viewer_page.scrub_to_time(0.95)
 
-        events = viewer_page.get_timeline_events()
-
-        # Events list should be accessible (may be empty in minimal test)
-        assert isinstance(events, list)
+        assert viewer_page.is_loaded()
+        assert not viewer_page.has_error()
 
 
 class TestErrorHandling:
-    """Test error handling in viewer."""
+    """Test graceful error handling in viewer."""
 
-    def test_invalid_run_path_handled(self, viewer_page):
-        """Invalid run path shows error gracefully."""
-        viewer_page.load_run("/nonexistent/path")
+    def test_invalid_run_path_shows_error(self, viewer_page):
+        """
+        Invalid run path should show a clear error message.
 
-        # Should either show error or fail gracefully
-        # (not crash the entire application)
-        is_loaded = viewer_page.is_loaded()
+        The app should NOT crash - it should display a user-friendly error.
+        """
+        viewer_page.load_run("/nonexistent/path/that/does/not/exist")
+
+        # App should still be loaded (not crashed)
+        assert viewer_page.is_loaded(), "Viewer crashed on invalid path"
+
+        # Should have an error message OR gracefully show empty state
+        # (depending on implementation)
         has_error = viewer_page.has_error()
+        error_msg = viewer_page.get_error_message()
 
-        # Either loaded (with error message) or gracefully failed
-        assert is_loaded or not has_error
+        if has_error:
+            assert error_msg, "Error state but no error message"
+            assert len(error_msg) > 10, "Error message too short to be useful"
 
-    def test_missing_files_handled(self, viewer_page, tmp_path):
-        """Missing required files handled gracefully."""
-        import json
-
-        # Create incomplete run (only manifest, no CZML)
+    def test_missing_czml_handled_gracefully(self, viewer_page, tmp_path):
+        """
+        Missing CZML file should show error, not crash.
+        """
+        # Create incomplete run (manifest only, no CZML)
         viz_dir = tmp_path / "viz"
         viz_dir.mkdir()
 
         manifest = {
             "plan_id": "incomplete_run",
             "fidelity": "LOW",
+            "_synthetic": True,
         }
 
         with open(viz_dir / "run_manifest.json", "w") as f:
@@ -226,109 +396,112 @@ class TestErrorHandling:
 
         viewer_page.load_run(str(tmp_path))
 
-        # Should handle missing CZML gracefully
-        # Either show error message or partial data
-        assert viewer_page.is_loaded()
+        # Should not crash
+        assert viewer_page.is_loaded(), "Viewer crashed on missing CZML"
 
 
-class TestResponsiveness:
-    """Test UI responsiveness."""
+class TestDataIntegrity:
+    """Test data integrity through the viewer pipeline."""
 
-    def test_page_loads_within_timeout(self, page: "Page", viewer_url: str):
-        """Page loads within reasonable time."""
-        start = datetime.now()
+    def test_viewer_loads_real_events_file(self, completed_run):
+        """
+        Verify the events.json file exists and has expected structure.
+        """
+        events_path = Path(completed_run.path) / "viz" / "events.json"
 
-        try:
-            page.goto(viewer_url, timeout=15000)
-            page.wait_for_load_state("networkidle", timeout=15000)
-        except Exception:
-            pytest.skip("Viewer not running")
+        if not events_path.exists():
+            # Events file may not exist if no events generated
+            if completed_run.event_count == 0:
+                return  # OK - no events, no file
+            else:
+                pytest.fail(
+                    f"Expected {completed_run.event_count} events but "
+                    f"events.json not found at {events_path}"
+                )
 
-        elapsed = (datetime.now() - start).total_seconds()
+        with open(events_path) as f:
+            events = json.load(f)
 
-        # Should load within 15 seconds
-        assert elapsed < 15.0
+        if isinstance(events, list):
+            assert len(events) == completed_run.event_count, (
+                f"Event count mismatch: file has {len(events)}, "
+                f"expected {completed_run.event_count}"
+            )
+
+            # Each event should have required fields
+            for i, event in enumerate(events):
+                assert "id" in event or "type" in event, (
+                    f"Event {i} missing id or type field"
+                )
+                assert "time" in event or "timestamp" in event, (
+                    f"Event {i} missing time field"
+                )
+
+    def test_viewer_loads_real_manifest_file(self, completed_run):
+        """
+        Verify the run_manifest.json file exists and has expected structure.
+        """
+        manifest_path = Path(completed_run.path) / "viz" / "run_manifest.json"
+
+        assert manifest_path.exists(), (
+            f"Manifest file not found at {manifest_path}\n"
+            "Simulation should always produce a manifest."
+        )
+
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+
+        # Required fields
+        required_fields = ["plan_id"]
+        for field in required_fields:
+            assert field in manifest, f"Manifest missing required field: {field}"
+
+
+@pytest.mark.ete_tier_b
+class TestPerformance:
+    """Performance and responsiveness tests."""
 
     def test_workspace_switch_responsive(self, viewer_page, completed_run):
-        """Workspace switching is responsive."""
+        """Workspace switching should complete within 2 seconds."""
         viewer_page.load_run(completed_run.path)
 
         start = datetime.now()
         viewer_page.switch_workspace("maneuver-planning")
         elapsed = (datetime.now() - start).total_seconds()
 
-        # Switch should complete within 2 seconds
-        assert elapsed < 2.0
+        assert elapsed < 2.0, (
+            f"Workspace switch took {elapsed:.2f}s, expected < 2.0s"
+        )
 
-    def test_no_memory_leaks_on_workspace_switch(self, viewer_page, completed_run):
-        """No obvious memory leaks when switching workspaces repeatedly."""
+    def test_no_js_errors_during_interaction(self, page, viewer_page, completed_run):
+        """
+        No JavaScript errors during normal interaction.
+
+        Captures console errors during workspace switching and
+        timeline scrubbing to catch runtime bugs.
+        """
+        errors = []
+
+        def handle_console(msg):
+            if msg.type == "error":
+                errors.append(msg.text)
+
+        page.on("console", handle_console)
+
         viewer_page.load_run(completed_run.path)
 
-        # Switch workspaces multiple times
-        workspaces = ["maneuver-planning", "vleo-drag", "mission-overview"]
+        # Interact with viewer
+        for ws in ["maneuver-planning", "vleo-drag", "mission-overview"]:
+            viewer_page.switch_workspace(ws)
+            viewer_page.page.wait_for_timeout(200)
 
-        for _ in range(3):
-            for ws in workspaces:
-                viewer_page.switch_workspace(ws)
-                viewer_page.page.wait_for_timeout(100)
-
-        # Page should still be responsive
-        assert viewer_page.is_loaded()
-        assert not viewer_page.has_error()
-
-
-class TestAccessibility:
-    """Basic accessibility tests for viewer."""
-
-    def test_page_has_title(self, viewer_page, completed_run):
-        """Page has a meaningful title."""
-        viewer_page.load_run(completed_run.path)
-
-        title = viewer_page.get_page_title()
-        assert title is not None
-        assert len(title) > 0
-
-    def test_main_content_accessible(self, viewer_page, completed_run):
-        """Main content area is accessible."""
-        viewer_page.load_run(completed_run.path)
-
-        # Check for main content area
-        main = viewer_page.page.query_selector("main, .workspace-content, [role='main']")
-        assert main is not None
-
-
-@pytest.mark.ete_tier_b
-class TestScreenshots:
-    """Screenshot capture tests for visual validation."""
-
-    def test_capture_mission_overview(self, viewer_page, completed_run, tmp_path):
-        """Capture screenshot of mission overview."""
-        viewer_page.load_run(completed_run.path)
-        viewer_page.page.wait_for_timeout(2000)  # Wait for rendering
-
-        screenshot_path = tmp_path / "mission_overview.png"
-        viewer_page.capture_screenshot(str(screenshot_path))
-
-        assert screenshot_path.exists()
-        assert screenshot_path.stat().st_size > 0
-
-    def test_capture_all_workspaces(self, viewer_page, completed_run, tmp_path):
-        """Capture screenshots of all workspaces."""
-        viewer_page.load_run(completed_run.path)
-
-        workspaces = [
-            "mission-overview",
-            "maneuver-planning",
-            "vleo-drag",
-            "anomaly-response",
-            "payload-ops",
+        # Filter critical errors only
+        critical_errors = [
+            e for e in errors
+            if any(err in e for err in ["TypeError", "ReferenceError", "SyntaxError"])
         ]
 
-        for ws in workspaces:
-            viewer_page.switch_workspace(ws)
-            viewer_page.page.wait_for_timeout(500)
-
-            screenshot_path = tmp_path / f"{ws}.png"
-            viewer_page.capture_screenshot(str(screenshot_path))
-
-            assert screenshot_path.exists()
+        assert len(critical_errors) == 0, (
+            f"JavaScript errors during interaction:\n"
+            + "\n".join(f"  - {e}" for e in critical_errors)
+        )

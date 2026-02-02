@@ -5,9 +5,11 @@ Provides fixtures for service orchestration, browser testing, and test data.
 
 from __future__ import annotations
 
+import json
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Optional
 
 import pytest
 
@@ -23,6 +25,14 @@ from .fixtures.data import (
     get_tier_a_case_ids,
     get_tier_b_case_ids,
 )
+
+
+# =============================================================================
+# DETERMINISTIC REFERENCE EPOCH
+# =============================================================================
+
+# Fixed epoch for all tests - ensures determinism and repeatability
+REFERENCE_EPOCH = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
 
 # =============================================================================
@@ -181,6 +191,35 @@ def viewer_url(service_config) -> str:
 
 
 # =============================================================================
+# DETERMINISTIC TIME FIXTURES
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def reference_epoch() -> datetime:
+    """
+    Get the fixed reference epoch for deterministic tests.
+
+    All tests should use this epoch instead of datetime.now() to ensure
+    repeatability and determinism.
+    """
+    return REFERENCE_EPOCH
+
+
+@pytest.fixture
+def test_time_range(reference_epoch) -> tuple:
+    """
+    Get a deterministic time range for testing.
+
+    Returns:
+        Tuple of (start_time, end_time) with 24-hour duration
+    """
+    start_time = reference_epoch
+    end_time = start_time + timedelta(hours=24)
+    return start_time, end_time
+
+
+# =============================================================================
 # GMAT/VALIDATION FIXTURES
 # =============================================================================
 
@@ -241,42 +280,183 @@ def gmat_comparator():
         pytest.skip("GMAT comparator not available")
 
 
+def get_truth_file_path(case_id: str, version: str = "v1") -> Path:
+    """
+    Get path to GMAT truth file for a case.
+
+    Args:
+        case_id: Case identifier (e.g., "R01")
+        version: Truth file version
+
+    Returns:
+        Path to truth file
+    """
+    return Path(f"validation/reference/truth/{case_id}_truth_{version}.json")
+
+
+@pytest.fixture
+def require_truth_file():
+    """
+    Factory fixture to require truth file existence.
+
+    Usage:
+        def test_something(require_truth_file):
+            require_truth_file("R01")  # Fails if truth file doesn't exist
+    """
+    def _require(case_id: str, version: str = "v1"):
+        truth_path = get_truth_file_path(case_id, version)
+        if not truth_path.exists():
+            pytest.fail(
+                f"GMAT truth file not found: {truth_path}\n"
+                f"Generate truth data with: python -m validation.gmat.harness.generate_truth {case_id}"
+            )
+        return truth_path
+    return _require
+
+
 # =============================================================================
-# TEST DATA FIXTURES
+# SIMULATION FIXTURES - REAL OUTPUT (NOT SYNTHETIC)
 # =============================================================================
 
 
 @pytest.fixture
-def completed_run(tmp_path) -> CompletedRunData:
+def real_simulation_run(tmp_path, reference_epoch) -> CompletedRunData:
     """
-    Create a completed run with sample data for viewer tests.
+    Run an actual simulation and return the completed run data.
 
-    Creates minimal required files in a temp directory.
+    This fixture runs a real simulation (not synthetic data) to ensure
+    viewer tests validate actual simulator output.
     """
-    import json
-    from datetime import datetime, timedelta, timezone
+    from sim.engine import simulate
+    from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig, Activity
+
+    start_time = reference_epoch
+    end_time = start_time + timedelta(hours=6)
+
+    # Deterministic initial state for ~400km circular orbit
+    initial_state = InitialState(
+        epoch=start_time,
+        position_eci=[6778.137, 0.0, 0.0],  # km, exactly Earth radius + 400km
+        velocity_eci=[0.0, 7.6686, 0.0],    # km/s, circular orbit velocity
+        mass_kg=500.0,
+        soc=0.85,
+    )
+
+    # Add realistic activities
+    activities = [
+        Activity(
+            activity_id="act_001",
+            activity_type="imaging",
+            start_time=start_time + timedelta(hours=1),
+            end_time=start_time + timedelta(hours=1, minutes=5),
+            parameters={"target_id": "target_001", "mode": "high_res"},
+        ),
+        Activity(
+            activity_id="act_002",
+            activity_type="downlink",
+            start_time=start_time + timedelta(hours=3),
+            end_time=start_time + timedelta(hours=3, minutes=10),
+            parameters={"station_id": "SVALBARD", "data_volume_gb": 2.5},
+        ),
+    ]
+
+    plan = PlanInput(
+        plan_id="ete_real_sim_001",
+        start_time=start_time,
+        end_time=end_time,
+        activities=activities,
+    )
+
+    config = SimConfig(
+        output_dir=str(tmp_path),
+        time_step_s=60.0,
+    )
+
+    # Run actual simulation
+    result = simulate(
+        plan=plan,
+        initial_state=initial_state,
+        fidelity=Fidelity.LOW,
+        config=config,
+    )
+
+    # Count actual events from output
+    events_path = tmp_path / "viz" / "events.json"
+    event_count = 0
+    constraint_violations = 0
+
+    if events_path.exists():
+        with open(events_path) as f:
+            events = json.load(f)
+            if isinstance(events, list):
+                event_count = len(events)
+                constraint_violations = sum(
+                    1 for e in events if "violation" in e.get("type", "")
+                )
+
+    # Load manifest
+    manifest_path = tmp_path / "viz" / "run_manifest.json"
+    manifest = {}
+    if manifest_path.exists():
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+
+    return CompletedRunData(
+        path=str(tmp_path),
+        case_id="ete_real_sim_001",
+        event_count=event_count,
+        constraint_violations=constraint_violations,
+        manifest=manifest,
+        initial_state=initial_state,
+        final_state=result.final_state,
+        sim_result=result,
+    )
+
+
+@pytest.fixture
+def completed_run(real_simulation_run) -> CompletedRunData:
+    """
+    Alias for real_simulation_run for backward compatibility.
+
+    This now uses REAL simulation output instead of synthetic fixtures.
+    """
+    return real_simulation_run
+
+
+# =============================================================================
+# SYNTHETIC FIXTURE (EXPLICITLY NAMED - USE SPARINGLY)
+# =============================================================================
+
+
+@pytest.fixture
+def synthetic_run_data(tmp_path, reference_epoch) -> CompletedRunData:
+    """
+    Create synthetic run data for tests that specifically need mock data.
+
+    WARNING: This creates fake data that was NOT produced by the simulator.
+    Only use this for tests that specifically test data loading mechanics,
+    not for tests that validate correctness.
+    """
+    start_time = reference_epoch
+    end_time = start_time + timedelta(hours=24)
 
     # Create directory structure
     viz_dir = tmp_path / "viz"
     viz_dir.mkdir()
 
-    # Create manifest
-    start_time = datetime.now(timezone.utc)
-    end_time = start_time + timedelta(hours=24)
-
     manifest = {
-        "plan_id": "test_run_001",
-        "fidelity": "MEDIUM",
+        "plan_id": "synthetic_test_run",
+        "fidelity": "LOW",
         "start_time": start_time.isoformat(),
         "end_time": end_time.isoformat(),
         "duration_hours": 24.0,
-        "spacecraft_id": "SC-001",
+        "spacecraft_id": "SC-SYNTHETIC",
+        "_synthetic": True,  # Mark as synthetic
     }
 
     with open(viz_dir / "run_manifest.json", "w") as f:
         json.dump(manifest, f)
 
-    # Create events
     events = [
         {
             "id": "evt_001",
@@ -297,19 +477,13 @@ def completed_run(tmp_path) -> CompletedRunData:
     with open(viz_dir / "events.json", "w") as f:
         json.dump(events, f)
 
-    # Create minimal CZML for Cesium
     czml = [
         {"id": "document", "version": "1.0"},
         {
             "id": "spacecraft",
-            "name": "SC-001",
+            "name": "SC-SYNTHETIC",
             "position": {
-                "cartographicDegrees": [
-                    0,
-                    -122.0,
-                    37.0,
-                    400000,  # 400km altitude
-                ]
+                "cartographicDegrees": [0, -122.0, 37.0, 400000]
             },
         },
     ]
@@ -319,11 +493,16 @@ def completed_run(tmp_path) -> CompletedRunData:
 
     return CompletedRunData(
         path=str(tmp_path),
-        case_id="test_001",
+        case_id="synthetic_001",
         event_count=2,
         constraint_violations=1,
         manifest=manifest,
     )
+
+
+# =============================================================================
+# CASE FIXTURES
+# =============================================================================
 
 
 @pytest.fixture
@@ -364,3 +543,89 @@ def aerie_client(graphql_url):
                 return True
 
         return MockAerieClient(graphql_url)
+
+
+# =============================================================================
+# PHYSICS VALIDATION HELPERS
+# =============================================================================
+
+
+@pytest.fixture
+def physics_validator():
+    """
+    Get physics validation helper for checking invariants.
+    """
+    import numpy as np
+
+    class PhysicsValidator:
+        """Helper class for validating physics invariants."""
+
+        MU_EARTH = 398600.4418  # km^3/s^2
+
+        def compute_specific_energy(self, position_km, velocity_km_s) -> float:
+            """Compute specific orbital energy (km^2/s^2)."""
+            r = np.linalg.norm(position_km)
+            v = np.linalg.norm(velocity_km_s)
+            return v**2 / 2 - self.MU_EARTH / r
+
+        def compute_angular_momentum(self, position_km, velocity_km_s) -> np.ndarray:
+            """Compute specific angular momentum vector (km^2/s)."""
+            return np.cross(position_km, velocity_km_s)
+
+        def compute_sma(self, position_km, velocity_km_s) -> float:
+            """Compute semi-major axis (km)."""
+            energy = self.compute_specific_energy(position_km, velocity_km_s)
+            if abs(energy) < 1e-10:
+                return float('inf')  # Parabolic
+            return -self.MU_EARTH / (2 * energy)
+
+        def validate_energy_conservation(
+            self,
+            initial_pos, initial_vel,
+            final_pos, final_vel,
+            tolerance_pct: float = 0.01
+        ) -> tuple:
+            """
+            Validate energy conservation.
+
+            Returns:
+                Tuple of (is_valid, energy_drift_pct, message)
+            """
+            e0 = self.compute_specific_energy(initial_pos, initial_vel)
+            e1 = self.compute_specific_energy(final_pos, final_vel)
+
+            if abs(e0) < 1e-10:
+                return False, 0.0, "Initial energy too close to zero"
+
+            drift_pct = abs(e1 - e0) / abs(e0) * 100
+            is_valid = drift_pct < tolerance_pct
+
+            msg = f"Energy drift: {drift_pct:.6f}% (tolerance: {tolerance_pct}%)"
+            return is_valid, drift_pct, msg
+
+        def validate_momentum_conservation(
+            self,
+            initial_pos, initial_vel,
+            final_pos, final_vel,
+            tolerance_pct: float = 0.01
+        ) -> tuple:
+            """
+            Validate angular momentum conservation.
+
+            Returns:
+                Tuple of (is_valid, momentum_drift_pct, message)
+            """
+            h0 = self.compute_angular_momentum(initial_pos, initial_vel)
+            h1 = self.compute_angular_momentum(final_pos, final_vel)
+
+            h0_mag = np.linalg.norm(h0)
+            if h0_mag < 1e-10:
+                return False, 0.0, "Initial momentum too close to zero"
+
+            drift_pct = np.linalg.norm(h1 - h0) / h0_mag * 100
+            is_valid = drift_pct < tolerance_pct
+
+            msg = f"Momentum drift: {drift_pct:.6f}% (tolerance: {tolerance_pct}%)"
+            return is_valid, drift_pct, msg
+
+    return PhysicsValidator()

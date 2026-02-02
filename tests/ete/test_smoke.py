@@ -1,7 +1,13 @@
 """ETE smoke tests - quick validation that services are operational.
 
-These tests should complete in under 60 seconds and verify basic connectivity.
-Run on every PR.
+These tests should complete in under 60 seconds and verify basic connectivity
+and functionality. Run on every PR.
+
+Key improvements over previous version:
+- Deterministic epochs (no datetime.now())
+- Meaningful assertions (not just `>= 0` or `is not None`)
+- Fail-fast on missing dependencies
+- Clear subsystem identification in failure messages
 
 Usage:
     pytest tests/ete/test_smoke.py -v
@@ -10,11 +16,13 @@ Usage:
 
 from __future__ import annotations
 
-import os
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+
+from .conftest import REFERENCE_EPOCH
 
 # Skip all tests if Playwright is not installed
 try:
@@ -34,32 +42,104 @@ pytestmark = [
 ]
 
 
-class TestServiceHealth:
-    """Test that core services are healthy and responding."""
+class TestCoreModules:
+    """Test that core modules are functional (not just importable)."""
 
-    def test_simulation_module_importable(self):
-        """Verify core simulation module can be imported."""
+    def test_simulation_engine_functional(self, reference_epoch):
+        """
+        Verify simulation engine can execute a basic scenario.
+
+        This is more than an import test - it validates the core simulation
+        pipeline is functional.
+        """
         from sim.engine import simulate
-        from sim.core.types import Fidelity
+        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
 
-        assert simulate is not None
-        assert Fidelity.LOW is not None
-        assert Fidelity.MEDIUM is not None
+        start_time = reference_epoch
+        end_time = start_time + timedelta(hours=1)
 
-    def test_validation_module_importable(self):
-        """Verify validation module can be imported."""
+        # Deterministic initial state
+        initial_state = InitialState(
+            epoch=start_time,
+            position_eci=[6778.137, 0.0, 0.0],
+            velocity_eci=[0.0, 7.6686, 0.0],
+            mass_kg=500.0,
+        )
+
+        plan = PlanInput(
+            plan_id="smoke_test_engine",
+            start_time=start_time,
+            end_time=end_time,
+            activities=[],
+        )
+
+        # Run with minimal config (no output dir needed for smoke test)
+        result = simulate(
+            plan=plan,
+            initial_state=initial_state,
+            fidelity=Fidelity.LOW,
+            config=SimConfig(time_step_s=60.0),
+        )
+
+        # Meaningful assertions
+        assert result is not None, "Simulation returned None"
+        assert result.final_state is not None, "Final state is None"
+        assert result.final_state.epoch == end_time, (
+            f"Final epoch mismatch: expected {end_time}, got {result.final_state.epoch}"
+        )
+        assert result.final_state.mass_kg > 0, "Final mass is non-positive"
+        assert result.final_state.mass_kg <= initial_state.mass_kg, (
+            "Final mass exceeds initial mass (mass cannot increase)"
+        )
+
+    def test_validation_module_functional(self):
+        """
+        Verify validation module can look up cases and provide tolerances.
+
+        Validates the GMAT case registry and tolerance system are working.
+        """
         from validation.gmat.case_registry import get_case, get_tier_cases, CaseTier
+        from validation.gmat.tolerance_config import GMATToleranceConfig
 
-        # Should be able to get Tier A cases
+        # Verify case registry
         tier_a = get_tier_cases(CaseTier.A)
-        assert len(tier_a) > 0
+        assert len(tier_a) == 12, f"Expected 12 Tier A cases, got {len(tier_a)}"
 
-        # Should be able to look up a specific case
-        case = get_case("R01")
-        assert case.case_id == "R01"
+        tier_b = get_tier_cases(CaseTier.B)
+        assert len(tier_b) == 6, f"Expected 6 Tier B cases, got {len(tier_b)}"
 
-    def test_aerie_health(self, graphql_url):
-        """Aerie GraphQL endpoint responds (if available)."""
+        # Verify specific case lookup
+        r01 = get_case("R01")
+        assert r01.case_id == "R01", "Case ID mismatch"
+        assert r01.name == "Finite Burn", f"Case name mismatch: {r01.name}"
+        assert r01.duration_hours > 0, "Case duration must be positive"
+
+        # Verify tolerance config
+        config = GMATToleranceConfig()
+        assert config.position_rms_km > 0, "Position tolerance must be positive"
+        assert config.velocity_rms_m_s > 0, "Velocity tolerance must be positive"
+
+    def test_scenario_runner_functional(self):
+        """Verify scenario runner can be instantiated and configured."""
+        from validation.gmat.harness.scenario_runner import ScenarioRunner
+
+        runner = ScenarioRunner()
+
+        # Verify runner has required methods
+        assert hasattr(runner, "run_scenario"), "Runner missing run_scenario method"
+        assert callable(runner.run_scenario), "run_scenario is not callable"
+
+
+class TestServiceConnectivity:
+    """Test connectivity to external services."""
+
+    def test_aerie_health_check(self, graphql_url):
+        """
+        Aerie GraphQL endpoint health check.
+
+        Validates Aerie is reachable and responding. Does NOT accept
+        error codes as "healthy" - only 200 OK passes.
+        """
         import requests
 
         try:
@@ -68,199 +148,239 @@ class TestServiceHealth:
                 json={"query": "{ __typename }"},
                 timeout=5,
             )
+        except requests.ConnectionError:
+            pytest.skip(
+                f"Aerie not reachable at {graphql_url} - "
+                "start Aerie with 'make aerie-up' or set AERIE_GRAPHQL_URL"
+            )
+        except requests.Timeout:
+            pytest.fail(f"Aerie timeout at {graphql_url} - service may be overloaded")
 
-            # Accept 200 OK or 401/403 (auth configured but endpoint responding)
-            assert response.status_code in [200, 401, 403]
-        except requests.RequestException:
-            pytest.skip("Aerie not available")
+        # Only 200 is healthy - 401/403 means auth is broken
+        assert response.status_code == 200, (
+            f"Aerie health check failed: HTTP {response.status_code}\n"
+            f"Response: {response.text[:500]}"
+        )
 
     @pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="Playwright not installed")
-    def test_viewer_loads(self, page: "Page", viewer_url: str):
-        """Viewer loads without errors."""
+    def test_viewer_health_check(self, page: "Page", viewer_url: str):
+        """
+        Viewer application health check.
+
+        Validates the viewer dev server is running and serving the app.
+        """
         try:
-            page.goto(viewer_url, timeout=10000)
-        except Exception:
-            pytest.skip("Viewer not running")
+            response = page.goto(viewer_url, timeout=10000)
+        except Exception as e:
+            pytest.skip(
+                f"Viewer not reachable at {viewer_url} - "
+                f"start with 'cd viewer && npm run dev': {e}"
+            )
 
-        # Should load without crashing
-        assert page.title() is not None
+        # Check response status
+        assert response is not None, "No response from viewer"
+        assert response.status == 200, (
+            f"Viewer returned HTTP {response.status}, expected 200"
+        )
 
-        # Body should be present
+        # Check page has content
+        title = page.title()
+        assert title, "Viewer page has no title"
+
+        # Check app shell renders
+        page.wait_for_selector("body", timeout=5000)
         body = page.query_selector("body")
-        assert body is not None
+        assert body is not None, "Page body not found"
 
 
-class TestBasicSimulation:
-    """Test that basic simulation functionality works."""
+class TestPhysicsInvariants:
+    """Test basic physics invariants in simulation output."""
 
-    def test_simulation_runs_low_fidelity(self, tmp_path):
-        """Basic LOW fidelity simulation completes."""
-        from datetime import datetime, timedelta, timezone
+    def test_orbit_remains_bound(self, reference_epoch, physics_validator):
+        """
+        Verify spacecraft remains in bound orbit (negative energy).
 
+        A spacecraft in LEO should have negative specific orbital energy
+        throughout the simulation.
+        """
         from sim.engine import simulate
         from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
 
-        # Create minimal inputs
-        start_time = datetime.now(timezone.utc)
-        end_time = start_time + timedelta(hours=1)
+        start_time = reference_epoch
+        end_time = start_time + timedelta(hours=2)
 
         initial_state = InitialState(
             epoch=start_time,
-            position_eci=[6778.0, 0.0, 0.0],  # ~400km altitude
-            velocity_eci=[0.0, 7.67, 0.0],  # Circular orbit velocity
-            mass_kg=1000.0,
+            position_eci=[6778.137, 0.0, 0.0],
+            velocity_eci=[0.0, 7.6686, 0.0],
+            mass_kg=500.0,
         )
 
-        plan = PlanInput(
-            plan_id="smoke_test",
-            start_time=start_time,
-            end_time=end_time,
-            activities=[],
-        )
-
-        config = SimConfig(
-            output_dir=str(tmp_path),
-            time_step_s=60.0,
-        )
-
-        # Run simulation
         result = simulate(
-            plan=plan,
+            plan=PlanInput(
+                plan_id="bound_orbit_test",
+                start_time=start_time,
+                end_time=end_time,
+                activities=[],
+            ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=config,
+            config=SimConfig(time_step_s=60.0),
         )
 
-        # Basic assertions
-        assert result is not None
-        assert result.final_state is not None
-        assert result.final_state.epoch == end_time
+        # Compute specific orbital energy
+        final_pos = result.final_state.position_eci
+        final_vel = result.final_state.velocity_eci
 
-    def test_scenario_runner_available(self):
-        """Scenario runner can be instantiated."""
-        from validation.gmat.harness.scenario_runner import ScenarioRunner
+        energy = physics_validator.compute_specific_energy(final_pos, final_vel)
 
-        runner = ScenarioRunner()
-        assert runner is not None
+        assert energy < 0, (
+            f"Spacecraft has escaped (positive energy: {energy:.6f} km²/s²)\n"
+            "This indicates a propagation error or incorrect initial conditions"
+        )
+
+    def test_mass_conservation(self, reference_epoch):
+        """
+        Verify mass is conserved when no propulsion is active.
+
+        Without active thrust, spacecraft mass should remain constant.
+        """
+        from sim.engine import simulate
+        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+
+        start_time = reference_epoch
+        end_time = start_time + timedelta(hours=1)
+
+        initial_mass = 500.0
+        initial_state = InitialState(
+            epoch=start_time,
+            position_eci=[6778.137, 0.0, 0.0],
+            velocity_eci=[0.0, 7.6686, 0.0],
+            mass_kg=initial_mass,
+        )
+
+        result = simulate(
+            plan=PlanInput(
+                plan_id="mass_conservation_test",
+                start_time=start_time,
+                end_time=end_time,
+                activities=[],  # No activities = no propulsion
+            ),
+            initial_state=initial_state,
+            fidelity=Fidelity.LOW,
+            config=SimConfig(time_step_s=60.0),
+        )
+
+        final_mass = result.final_state.mass_kg
+
+        # Mass should be exactly preserved (within floating point tolerance)
+        assert abs(final_mass - initial_mass) < 1e-6, (
+            f"Mass changed without propulsion: {initial_mass} -> {final_mass}\n"
+            f"Delta: {final_mass - initial_mass} kg"
+        )
 
 
-class TestDataLoading:
-    """Test data loading and file operations."""
+class TestDataStructures:
+    """Test data structure validity and integrity."""
 
-    def test_sample_run_loads(self, tmp_path):
-        """Sample run data can be loaded by viewer data structures."""
-        import json
-        from datetime import datetime, timedelta, timezone
+    def test_case_registry_integrity(self):
+        """Verify case registry has no duplicate IDs and valid data."""
+        from validation.gmat.case_registry import CASE_REGISTRY, get_case
 
-        # Create sample data
-        viz_dir = tmp_path / "viz"
-        viz_dir.mkdir()
+        # Check for duplicates (should be caught by dict, but verify)
+        case_ids = list(CASE_REGISTRY.keys())
+        assert len(case_ids) == len(set(case_ids)), "Duplicate case IDs in registry"
 
-        start_time = datetime.now(timezone.utc)
+        # Verify each case has required fields
+        for case_id, case in CASE_REGISTRY.items():
+            assert case.case_id == case_id, f"Case ID mismatch for {case_id}"
+            assert case.name, f"Case {case_id} has no name"
+            assert case.duration_hours > 0, f"Case {case_id} has invalid duration"
+            assert case.expected_runtime_s > 0, f"Case {case_id} has invalid runtime"
 
-        manifest = {
-            "plan_id": "smoke_test_run",
-            "fidelity": "LOW",
-            "start_time": start_time.isoformat(),
-            "end_time": (start_time + timedelta(hours=1)).isoformat(),
-            "duration_hours": 1.0,
-        }
-
-        with open(viz_dir / "run_manifest.json", "w") as f:
-            json.dump(manifest, f)
-
-        # Verify file exists and is valid JSON
-        with open(viz_dir / "run_manifest.json") as f:
-            loaded = json.load(f)
-
-        assert loaded["plan_id"] == "smoke_test_run"
-        assert loaded["fidelity"] == "LOW"
-
-    def test_tolerance_config_loads(self):
-        """Tolerance configuration can be loaded."""
+    def test_tolerance_config_validity(self):
+        """Verify tolerance configuration has valid values."""
         from validation.gmat.tolerance_config import GMATToleranceConfig
 
         config = GMATToleranceConfig()
 
-        # Check defaults are reasonable
+        # All tolerances must be positive
         assert config.position_rms_km > 0
         assert config.velocity_rms_m_s > 0
         assert config.altitude_rms_km > 0
 
-    def test_case_registry_complete(self):
-        """Case registry has expected cases."""
-        from validation.gmat.case_registry import (
-            TIER_A_CASES,
-            TIER_B_CASES,
-            get_case,
+        # Tolerances should be reasonable (not too large or too small)
+        assert 0.001 < config.position_rms_km < 1000, (
+            f"Position tolerance {config.position_rms_km} km seems unreasonable"
         )
-
-        # Tier A should have 12 cases (R01-R12)
-        assert len(TIER_A_CASES) == 12
-
-        # Tier B should have 6 cases (N01-N06)
-        assert len(TIER_B_CASES) == 6
-
-        # Spot check specific cases
-        r01 = get_case("R01")
-        assert r01.name == "Finite Burn"
-
-        n01 = get_case("N01")
-        assert n01.name == "LEO EP Drag Makeup"
+        assert 0.001 < config.velocity_rms_m_s < 1000, (
+            f"Velocity tolerance {config.velocity_rms_m_s} m/s seems unreasonable"
+        )
 
 
 @pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="Playwright not installed")
 class TestViewerSmoke:
     """Viewer-specific smoke tests."""
 
-    def test_viewer_app_shell_renders(self, page: "Page", viewer_url: str):
-        """Viewer app shell renders correctly."""
-        try:
-            page.goto(viewer_url, timeout=10000)
-        except Exception:
-            pytest.skip("Viewer not running")
+    def test_viewer_no_critical_js_errors(self, page: "Page", viewer_url: str):
+        """
+        Viewer loads without critical JavaScript errors.
 
-        # Wait for app shell
-        try:
-            page.wait_for_selector(".app-shell", timeout=5000)
-            app_shell = page.query_selector(".app-shell")
-            assert app_shell is not None
-        except Exception:
-            # App shell might have different class name
-            body = page.query_selector("body")
-            assert body is not None
-
-    def test_viewer_no_critical_errors(self, page: "Page", viewer_url: str):
-        """Viewer loads without critical JavaScript errors."""
-        errors = []
+        Critical errors (TypeError, ReferenceError, SyntaxError) indicate
+        fundamental bugs that will break functionality.
+        """
+        critical_errors = []
 
         def handle_console(msg):
             if msg.type == "error":
                 text = msg.text
-                # Ignore some common non-critical errors
-                if not any(
-                    ignore in text
-                    for ignore in [
-                        "favicon",
-                        "Failed to load resource",
-                        "net::ERR",
-                    ]
+                # Only track critical JS errors
+                if any(
+                    err_type in text
+                    for err_type in ["TypeError", "ReferenceError", "SyntaxError"]
                 ):
-                    errors.append(text)
+                    critical_errors.append(text)
 
         page.on("console", handle_console)
 
         try:
             page.goto(viewer_url, timeout=10000)
-            page.wait_for_load_state("networkidle")
-        except Exception:
-            pytest.skip("Viewer not running")
+            page.wait_for_load_state("networkidle", timeout=10000)
+        except Exception as e:
+            pytest.skip(f"Viewer not available: {e}")
 
-        # Check for critical errors (TypeError, ReferenceError, etc.)
-        critical_errors = [
-            e
-            for e in errors
-            if any(err_type in e for err_type in ["TypeError", "ReferenceError", "SyntaxError"])
-        ]
+        assert len(critical_errors) == 0, (
+            f"Critical JavaScript errors detected:\n"
+            + "\n".join(f"  - {e}" for e in critical_errors)
+        )
 
-        assert len(critical_errors) == 0, f"Critical JS errors: {critical_errors}"
+    def test_viewer_renders_app_shell(self, page: "Page", viewer_url: str):
+        """
+        Viewer renders the application shell structure.
+
+        Verifies the core UI structure is present, not just that the page loads.
+        """
+        try:
+            page.goto(viewer_url, timeout=10000)
+        except Exception as e:
+            pytest.skip(f"Viewer not available: {e}")
+
+        # Wait for app to render
+        page.wait_for_load_state("domcontentloaded")
+
+        # Check for app shell - try multiple selectors
+        app_shell = page.query_selector(
+            ".app-shell, #app, #root, [data-testid='app-shell']"
+        )
+
+        if app_shell is None:
+            # Fallback: check that body has meaningful content
+            body = page.query_selector("body")
+            assert body is not None, "Page has no body element"
+
+            body_html = body.inner_html()
+            assert len(body_html) > 100, (
+                "Page body has minimal content - app may not have rendered"
+            )
+        else:
+            assert app_shell.is_visible(), "App shell exists but is not visible"
