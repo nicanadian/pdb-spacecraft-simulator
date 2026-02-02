@@ -1,0 +1,99 @@
+# ETE (End-to-End) Validation Tolerances
+#
+# These tolerances are relaxed compared to unit validation tolerances
+# to account for full pipeline overhead (export/import, format conversion, etc.)
+#
+# Tolerance hierarchy:
+#   1. Case-specific override (highest priority)
+#   2. Global ETE tolerance
+#   3. Default validation tolerance (fallback)
+
+tolerances:
+  # Global ETE defaults (relaxed for full pipeline)
+  global:
+    # Position accuracy
+    position_rms_km: 10.0        # RMS error
+    position_max_km: 25.0        # Maximum error
+
+    # Velocity accuracy
+    velocity_rms_m_s: 10.0       # RMS error
+    velocity_max_m_s: 25.0       # Maximum error
+
+    # Altitude accuracy
+    altitude_rms_km: 5.0         # RMS error
+
+    # SMA accuracy
+    sma_rms_km: 10.0             # RMS error
+
+    # Timing accuracy (for eclipse, contact windows)
+    timing_tolerance_s: 60.0     # Seconds
+
+  # Case-specific overrides
+  # These override global defaults for specific scenarios
+  scenarios:
+    # R04: Electric Propulsion - wider tolerances due to EP modeling complexity
+    R04:
+      position_rms_km: 15.0
+      position_max_km: 30.0
+      velocity_rms_m_s: 15.0
+      altitude_rms_km: 8.0
+
+    # R05: Force Models - tighter tolerances for pure propagation
+    R05:
+      position_rms_km: 8.0
+      velocity_rms_m_s: 8.0
+
+    # R09: Eclipse Location - timing-focused
+    R09:
+      position_rms_km: 10.0
+      timing_tolerance_s: 30.0
+
+    # R11: LEO Station Keeping - long duration, allow drift
+    R11:
+      position_rms_km: 20.0
+      position_max_km: 50.0
+      altitude_rms_km: 10.0
+
+    # N01: LEO EP Drag Makeup - drag modeling sensitivity
+    N01:
+      position_rms_km: 12.0
+      altitude_rms_km: 2.0       # Tighter for drag cases
+
+    # N02: VLEO Continuous Drag - very sensitive to drag
+    N02:
+      position_rms_km: 15.0
+      altitude_rms_km: 1.5       # Very tight for VLEO
+
+    # N03: VLEO Duty-Cycle - eclipse gating adds complexity
+    N03:
+      position_rms_km: 15.0
+      altitude_rms_km: 2.0
+      timing_tolerance_s: 30.0
+
+    # N04: SSO LTAN/RAAN - long duration, RAAN control
+    N04:
+      position_rms_km: 25.0
+      position_max_km: 60.0
+
+    # N05: Constellation Phasing - relative phasing matters
+    N05:
+      position_rms_km: 15.0
+
+    # N06: SK Finite Burn - converted from impulsive
+    N06:
+      position_rms_km: 15.0
+      velocity_rms_m_s: 12.0
+
+
+# Pass/Fail Criteria Summary
+#
+# Tier A (Must Pass on Every PR):
+#   - All 7 quick cases: position RMS < 10 km (with overrides)
+#   - No simulation crashes
+#   - Viewer loads all runs without JS errors
+#   - Mission status displays correct event counts
+#
+# Tier B (Must Pass Nightly):
+#   - Eclipse timing within 30s of GMAT
+#   - All workspace switching works
+#   - Extended accuracy for drag-sensitive cases

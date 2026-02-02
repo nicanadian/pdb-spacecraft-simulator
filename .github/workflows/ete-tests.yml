@@ -1,0 +1,258 @@
+name: ETE Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: 'Test tier to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - smoke
+          - tier_a
+          - tier_b
+          - all
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+
+jobs:
+  ete-smoke:
+    name: ETE Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev,validation]"
+
+      - name: Run smoke tests
+        run: |
+          pytest tests/ete/ -m "ete_smoke" -v --tb=short
+
+  ete-tier-a:
+    name: ETE Tier A Tests
+    needs: ete-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: viewer/package-lock.json
+
+      - name: Install Python dependencies
+        run: |
+          pip install -e ".[dev,validation,e2e]"
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+
+      - name: Install viewer dependencies
+        working-directory: viewer
+        run: |
+          npm ci
+
+      - name: Start viewer dev server
+        working-directory: viewer
+        run: |
+          npm run dev &
+          # Wait for server to start
+          sleep 10
+
+      - name: Check viewer is running
+        run: |
+          curl -f http://localhost:3002 || echo "Viewer not responding"
+
+      - name: Run Tier A tests
+        run: |
+          pytest tests/ete/ -m "ete_tier_a" -v --tb=short
+        env:
+          VIEWER_URL: http://localhost:3002
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ete-tier-a-results
+          path: |
+            test-results/
+            validation/output/
+
+  ete-tier-b:
+    name: ETE Tier B Tests (Nightly)
+    # Only run on schedule or manual trigger
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tier == 'tier_b')
+    needs: ete-tier-a
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: viewer/package-lock.json
+
+      - name: Install Python dependencies
+        run: |
+          pip install -e ".[dev,validation,e2e,medium]"
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+
+      - name: Install viewer dependencies
+        working-directory: viewer
+        run: |
+          npm ci
+
+      - name: Start viewer dev server
+        working-directory: viewer
+        run: |
+          npm run dev &
+          sleep 10
+
+      - name: Run Tier B tests
+        run: |
+          pytest tests/ete/ -m "ete_tier_b" -v --tb=short
+        env:
+          VIEWER_URL: http://localhost:3002
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ete-tier-b-results
+          path: |
+            test-results/
+            validation/output/
+
+  ete-with-aerie:
+    name: ETE with Aerie (Nightly)
+    # Only run on schedule for full integration
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      # Note: Aerie services would be started via docker-compose
+      # This is a placeholder for full Aerie integration
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: viewer/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev,validation,e2e,aerie]"
+          playwright install chromium
+
+      - name: Check for Aerie compose file
+        id: check-aerie
+        run: |
+          if [ -f ".aerie-upstream/deployment/docker-compose.yml" ]; then
+            echo "aerie_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "aerie_available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Start Aerie services
+        if: steps.check-aerie.outputs.aerie_available == 'true'
+        run: |
+          docker compose -f .aerie-upstream/deployment/docker-compose.yml up -d
+          # Wait for Aerie to be healthy
+          timeout 120 bash -c 'until curl -f http://localhost:8080/v1/graphql; do sleep 5; done'
+
+      - name: Install viewer dependencies
+        working-directory: viewer
+        run: |
+          npm ci
+
+      - name: Start viewer
+        working-directory: viewer
+        run: |
+          npm run dev &
+          sleep 10
+
+      - name: Run full ETE tests
+        run: |
+          pytest tests/ete/ -v --tb=short
+        env:
+          AERIE_GRAPHQL_URL: http://localhost:8080/v1/graphql
+          VIEWER_URL: http://localhost:3002
+
+      - name: Stop Aerie services
+        if: always() && steps.check-aerie.outputs.aerie_available == 'true'
+        run: |
+          docker compose -f .aerie-upstream/deployment/docker-compose.yml down
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ete-aerie-results
+          path: |
+            test-results/
+            validation/output/

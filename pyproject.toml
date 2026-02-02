@@ -66,6 +66,7 @@ mcp = [
 e2e = [
     "playwright>=1.40.0",
     "pytest-playwright>=0.4.0",
+    "requests>=2.28.0",
 ]
 
 [project.scripts]
@@ -83,6 +84,10 @@ addopts = "-v"
 asyncio_mode = "auto"
 markers = [
     "e2e: mark test as end-to-end test requiring Aerie",
+    "ete: mark test as end-to-end validation test",
+    "ete_smoke: ETE smoke tests (<60s)",
+    "ete_tier_a: ETE Tier A tests (<300s)",
+    "ete_tier_b: ETE Tier B tests (<1800s, nightly)",
 ]
 
 [tool.black]
