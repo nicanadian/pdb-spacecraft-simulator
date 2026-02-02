@@ -1,0 +1,26 @@
+{
+  "name": "spacecraft-viewer",
+  "version": "1.0.0",
+  "description": "CesiumJS viewer for spacecraft simulation visualization",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "vite preview --port 8080"
+  },
+  "dependencies": {
+    "cesium": "^1.114.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.1",
+    "vite": "^5.0.0",
+    "vite-plugin-cesium": "^1.2.23"
+  },
+  "keywords": [
+    "cesium",
+    "spacecraft",
+    "visualization",
+    "simulation"
+  ]
+}

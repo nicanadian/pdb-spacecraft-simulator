@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spacecraft Simulation Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #header {
+            height: 50px;
+            background: #1a1a2e;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+
+        #header h1 {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        #header .run-info {
+            font-size: 14px;
+            color: #8888aa;
+        }
+
+        #main {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        #cesiumContainer {
+            flex: 1;
+            height: 100%;
+        }
+
+        #sidebar {
+            width: 320px;
+            background: #16213e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel {
+            border-bottom: 1px solid #2a3f5f;
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            background: #1a1a2e;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-content {
+            padding: 12px 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .event-list {
+            list-style: none;
+        }
+
+        .event-item {
+            padding: 8px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .event-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .event-item.info { border-left: 3px solid #3498db; }
+        .event-item.warning { border-left: 3px solid #f39c12; }
+        .event-item.violation { border-left: 3px solid #e74c3c; }
+        .event-item.error { border-left: 3px solid #c0392b; }
+
+        .event-time {
+            font-size: 11px;
+            color: #8888aa;
+        }
+
+        .event-title {
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        #timeline {
+            height: 60px;
+            background: #1a1a2e;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 15px;
+        }
+
+        #timeline button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #timeline button:hover {
+            background: #2980b9;
+        }
+
+        #timeline .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #8888aa;
+        }
+
+        #timeline .time-display {
+            flex: 1;
+            text-align: center;
+            color: white;
+            font-family: monospace;
+            font-size: 16px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header id="header">
+            <h1>Spacecraft Simulation Viewer</h1>
+            <span class="run-info" id="runInfo">Loading...</span>
+        </header>
+
+        <div id="main">
+            <div id="cesiumContainer">
+                <div class="loading" id="loading">Loading visualization...</div>
+            </div>
+
+            <aside id="sidebar">
+                <div class="panel" id="eventsPanel">
+                    <div class="panel-header">
+                        Events
+                        <span id="eventCount">0</span>
+                    </div>
+                    <div class="panel-content">
+                        <ul class="event-list" id="eventList"></ul>
+                    </div>
+                </div>
+
+                <div class="panel" id="contactsPanel">
+                    <div class="panel-header">
+                        Ground Contacts
+                        <span id="contactCount">0</span>
+                    </div>
+                    <div class="panel-content">
+                        <ul class="event-list" id="contactList"></ul>
+                    </div>
+                </div>
+
+                <div class="panel" id="statePanel">
+                    <div class="panel-header">Current State</div>
+                    <div class="panel-content" id="stateContent">
+                        <div>Altitude: <span id="stateAltitude">--</span> km</div>
+                        <div>SOC: <span id="stateSoc">--</span>%</div>
+                        <div>Storage: <span id="stateStorage">--</span> GB</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <footer id="timeline">
+            <button id="playPauseBtn">Play</button>
+            <div class="speed-control">
+                <label for="speedSelect">Speed:</label>
+                <select id="speedSelect">
+                    <option value="1">1x</option>
+                    <option value="10">10x</option>
+                    <option value="60" selected>60x</option>
+                    <option value="300">300x</option>
+                    <option value="1000">1000x</option>
+                </select>
+            </div>
+            <div class="time-display" id="timeDisplay">--:--:--</div>
+            <button id="resetBtn">Reset</button>
+        </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
