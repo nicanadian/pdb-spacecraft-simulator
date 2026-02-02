@@ -224,31 +224,76 @@ def test_time_range(reference_epoch) -> tuple:
 # =============================================================================
 
 
+class ETEToleranceConfig:
+    """
+    Wrapper for GMATToleranceConfig with default value support.
+
+    Extends the base config with a default parameter for get_tolerance.
+    """
+
+    def __init__(self, base_config):
+        self._base = base_config
+
+    def get_tolerance(
+        self,
+        field_name: str,
+        scenario_id: Optional[str] = None,
+        default: Optional[float] = None,
+    ) -> float:
+        """
+        Get tolerance value with optional default.
+
+        Args:
+            field_name: Tolerance field name
+            scenario_id: Optional scenario ID for override
+            default: Default value if field not found
+
+        Returns:
+            Tolerance value
+        """
+        try:
+            return self._base.get_tolerance(field_name, scenario_id)
+        except AttributeError:
+            if default is not None:
+                return default
+            raise
+
+    def get_tolerances_for_scenario(self, scenario_id: Optional[str] = None):
+        return self._base.get_tolerances_for_scenario(scenario_id)
+
+    def __getattr__(self, name):
+        return getattr(self._base, name)
+
+
 @pytest.fixture(scope="session")
 def tolerance_config():
     """
     Load ETE tolerance configuration.
 
     Tries ETE-specific tolerances first, falls back to default validation config.
+    Returns an ETEToleranceConfig wrapper that supports default values.
     """
     from validation.gmat.tolerance_config import GMATToleranceConfig
 
     # Try ETE-specific config first
     ete_config_path = Path("validation/config/ete_tolerances.yaml")
     if ete_config_path.exists():
-        return GMATToleranceConfig.from_yaml(ete_config_path)
+        base_config = GMATToleranceConfig.from_yaml(ete_config_path)
+        return ETEToleranceConfig(base_config)
 
     # Fall back to default validation config
     default_config_path = Path("validation/config/validation_config.yaml")
     if default_config_path.exists():
-        return GMATToleranceConfig.from_yaml(default_config_path)
+        base_config = GMATToleranceConfig.from_yaml(default_config_path)
+        return ETEToleranceConfig(base_config)
 
     # Return defaults
-    return GMATToleranceConfig(
+    base_config = GMATToleranceConfig(
         position_rms_km=10.0,
         velocity_rms_m_s=10.0,
         altitude_rms_km=5.0,
     )
+    return ETEToleranceConfig(base_config)
 
 
 @pytest.fixture(scope="session")
@@ -280,37 +325,87 @@ def gmat_comparator():
         pytest.skip("GMAT comparator not available")
 
 
+def get_baseline_file_path(case_id: str, version: str = "v1") -> Path:
+    """
+    Get path to GMAT baseline file for a case.
+
+    Baselines are stored in validation/baselines/gmat/{case_id}/baseline_{version}.json
+
+    Args:
+        case_id: Case identifier (e.g., "R01", "pure_propagation_12h")
+        version: Baseline version
+
+    Returns:
+        Path to baseline file
+    """
+    # Convert case ID to directory format
+    case_dir = case_id.lower()
+    return Path(f"validation/baselines/gmat/{case_dir}/baseline_{version}.json")
+
+
 def get_truth_file_path(case_id: str, version: str = "v1") -> Path:
     """
-    Get path to GMAT truth file for a case.
+    Alias for get_baseline_file_path for backward compatibility.
 
     Args:
         case_id: Case identifier (e.g., "R01")
-        version: Truth file version
+        version: Baseline file version
 
     Returns:
-        Path to truth file
+        Path to baseline file
     """
-    return Path(f"validation/reference/truth/{case_id}_truth_{version}.json")
+    return get_baseline_file_path(case_id, version)
 
 
 @pytest.fixture
 def require_truth_file():
     """
-    Factory fixture to require truth file existence.
+    Factory fixture to require baseline/truth file existence.
 
     Usage:
         def test_something(require_truth_file):
-            require_truth_file("R01")  # Fails if truth file doesn't exist
+            require_truth_file("R01")  # Fails if baseline file doesn't exist
     """
     def _require(case_id: str, version: str = "v1"):
-        truth_path = get_truth_file_path(case_id, version)
-        if not truth_path.exists():
+        baseline_path = get_baseline_file_path(case_id, version)
+        if not baseline_path.exists():
+            # Check manifest for available baselines
+            manifest_path = Path("validation/baselines/gmat/manifest.json")
+            available = []
+            if manifest_path.exists():
+                with open(manifest_path) as f:
+                    manifest = json.load(f)
+                    available = list(manifest.get("baselines", {}).keys())
+
             pytest.fail(
-                f"GMAT truth file not found: {truth_path}\n"
-                f"Generate truth data with: python -m validation.gmat.harness.generate_truth {case_id}"
+                f"GMAT baseline file not found: {baseline_path}\n"
+                f"Available baselines: {available or 'none'}\n"
+                f"Generate baseline with: python -m validation.gmat.harness.generate_baseline {case_id}"
             )
-        return truth_path
+        return baseline_path
+    return _require
+
+
+@pytest.fixture
+def require_baseline():
+    """
+    Alias for require_truth_file - more explicit naming.
+    """
+    def _require(case_id: str, version: str = "v1"):
+        baseline_path = get_baseline_file_path(case_id, version)
+        if not baseline_path.exists():
+            manifest_path = Path("validation/baselines/gmat/manifest.json")
+            available = []
+            if manifest_path.exists():
+                with open(manifest_path) as f:
+                    manifest = json.load(f)
+                    available = list(manifest.get("baselines", {}).keys())
+
+            pytest.fail(
+                f"GMAT baseline not found: {baseline_path}\n"
+                f"Available baselines: {available or 'none'}"
+            )
+        return baseline_path
     return _require
 
 
