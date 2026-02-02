@@ -24,7 +24,13 @@ from typing import Dict, List, Optional
 import pytest
 import numpy as np
 
-from .conftest import REFERENCE_EPOCH, get_baseline_file_path
+from .conftest import (
+    REFERENCE_EPOCH,
+    get_baseline_file_path,
+    create_test_plan,
+    create_test_initial_state,
+    create_test_config,
+)
 
 pytestmark = [
     pytest.mark.ete_tier_a,
@@ -131,7 +137,7 @@ class TestEphemerisBaseline:
         "pure_propagation_12h",
     ])
     def test_propagation_against_ephemeris_baseline(
-        self, case_id: str, require_baseline, tolerance_config, physics_validator
+        self, case_id: str, require_baseline, tolerance_config, physics_validator, tmp_path
     ):
         """
         Compare propagation against ephemeris baseline.
@@ -163,9 +169,9 @@ class TestEphemerisBaseline:
         )
 
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_epoch,
             position_eci=[first["x_km"], first["y_km"], first["z_km"]],
             velocity_eci=[
@@ -177,15 +183,14 @@ class TestEphemerisBaseline:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id=f"baseline_test_{case_id}",
                 start_time=start_epoch,
                 end_time=end_epoch,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         assert result is not None
@@ -238,11 +243,13 @@ class TestFinalStateBaseline:
             final = baseline["final"]
 
             # Required orbital elements or cartesian state
-            has_elements = "sma" in final or "a" in final
-            has_cartesian = "x" in final or "position" in final
+            # Support both naming conventions: sma/x and sma_km/x_km
+            has_elements = any(k in final for k in ["sma", "a", "sma_km", "a_km"])
+            has_cartesian = any(k in final for k in ["x", "position", "x_km"])
 
             assert has_elements or has_cartesian, (
-                f"Baseline {case_id} final state missing orbital elements or cartesian state"
+                f"Baseline {case_id} final state missing orbital elements or cartesian state\n"
+                f"Available keys: {list(final.keys())}"
             )
 
     @pytest.mark.parametrize("case_id", FINAL_STATE_CASES[:3] if FINAL_STATE_CASES else ["skip"])
@@ -266,53 +273,58 @@ class TestFinalStateBaseline:
         if not initial or not final_expected:
             pytest.skip(f"Baseline {case_id} incomplete")
 
-        # Get initial state
-        if "x" in initial:
+        # Get initial state - support both naming conventions
+        if "x_km" in initial:
+            pos = [initial["x_km"], initial["y_km"], initial["z_km"]]
+            vel = [initial["vx_km_s"], initial["vy_km_s"], initial["vz_km_s"]]
+        elif "x" in initial:
             pos = [initial["x"], initial["y"], initial["z"]]
             vel = [initial["vx"], initial["vy"], initial["vz"]]
         else:
             pytest.skip(f"Cannot parse initial state for {case_id}")
 
-        # Get epoch
-        epoch_str = initial.get("epoch", baseline.get("epoch"))
+        # Get epoch - support multiple naming conventions
+        epoch_str = initial.get("epoch_utc") or initial.get("epoch") or baseline.get("epoch")
         if epoch_str:
             start_epoch = datetime.fromisoformat(epoch_str.replace("Z", "+00:00"))
         else:
             start_epoch = REFERENCE_EPOCH
 
-        # Get duration
-        duration_days = baseline.get("duration_days", 1.0)
-        end_epoch = start_epoch + timedelta(days=duration_days)
+        # Get end epoch from final state or duration
+        final_epoch_str = final_expected.get("epoch_utc") or final_expected.get("epoch")
+        if final_epoch_str:
+            end_epoch = datetime.fromisoformat(final_epoch_str.replace("Z", "+00:00"))
+        else:
+            duration_days = baseline.get("duration_days", 1.0)
+            end_epoch = start_epoch + timedelta(days=duration_days)
 
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_epoch,
             position_eci=pos,
             velocity_eci=vel,
-            mass_kg=initial.get("mass", 500.0),
+            mass_kg=initial.get("mass_kg") or initial.get("mass", 500.0),
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id=f"final_state_test_{case_id}",
                 start_time=start_epoch,
                 end_time=end_epoch,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=f"/tmp/baseline_test_{case_id}", time_step_s=60.0),
         )
 
         assert result is not None
         assert result.final_state is not None
 
-        # Compare final SMA if available
-        if "sma" in final_expected:
-            from .conftest import physics_validator  # Get from fixture
-
+        # Compare final SMA if available - support both naming conventions
+        sma_key = "sma_km" if "sma_km" in final_expected else "sma"
+        if sma_key in final_expected:
             # Compute SMA from final state
             pos_final = np.array(result.final_state.position_eci)
             vel_final = np.array(result.final_state.velocity_eci)
@@ -324,7 +336,7 @@ class TestFinalStateBaseline:
             energy = v**2 / 2 - mu / r
             sma_sim = -mu / (2 * energy) if abs(energy) > 1e-10 else float('inf')
 
-            sma_baseline = final_expected["sma"]
+            sma_baseline = final_expected[sma_key]
             sma_error_km = abs(sma_sim - sma_baseline)
 
             tolerance_km = tolerance_config.get_tolerance(
@@ -357,12 +369,19 @@ class TestBaselinePhysicsInvariants:
 
         # Check initial state
         initial = baseline.get("initial", {})
-        if "x" in initial:
+        if "x_km" in initial:
+            pos = [initial["x_km"], initial["y_km"], initial["z_km"]]
+            vel = [initial["vx_km_s"], initial["vy_km_s"], initial["vz_km_s"]]
+            energy = physics_validator.compute_specific_energy(pos, vel)
+            assert energy < 0, (
+                f"BASELINE {case_id} INITIAL STATE NOT BOUND\n"
+                f"  Energy: {energy:.6f} km²/s²\n"
+                f"  Bound orbits must have negative energy."
+            )
+        elif "x" in initial:
             pos = [initial["x"], initial["y"], initial["z"]]
             vel = [initial["vx"], initial["vy"], initial["vz"]]
-
             energy = physics_validator.compute_specific_energy(pos, vel)
-
             assert energy < 0, (
                 f"BASELINE {case_id} INITIAL STATE NOT BOUND\n"
                 f"  Energy: {energy:.6f} km²/s²\n"
@@ -371,12 +390,19 @@ class TestBaselinePhysicsInvariants:
 
         # Check final state
         final = baseline.get("final", {})
-        if "x" in final:
+        if "x_km" in final:
+            pos = [final["x_km"], final["y_km"], final["z_km"]]
+            vel = [final["vx_km_s"], final["vy_km_s"], final["vz_km_s"]]
+            energy = physics_validator.compute_specific_energy(pos, vel)
+            assert energy < 0, (
+                f"BASELINE {case_id} FINAL STATE NOT BOUND\n"
+                f"  Energy: {energy:.6f} km²/s²\n"
+                f"  Bound orbits must have negative energy."
+            )
+        elif "x" in final:
             pos = [final["x"], final["y"], final["z"]]
             vel = [final["vx"], final["vy"], final["vz"]]
-
             energy = physics_validator.compute_specific_energy(pos, vel)
-
             assert energy < 0, (
                 f"BASELINE {case_id} FINAL STATE NOT BOUND\n"
                 f"  Energy: {energy:.6f} km²/s²\n"

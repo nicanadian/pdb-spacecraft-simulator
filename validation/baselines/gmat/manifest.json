@@ -11,6 +11,168 @@
         "end_epoch": "2025-01-15T12:01:00+00:00"
       },
       "latest": "v1"
+    },
+    "N01": {
+      "v1": {
+        "path": "N01/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:22:01.549972+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "N02": {
+      "v1": {
+        "path": "N02/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:22:05.769404+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "N03": {
+      "v1": {
+        "path": "N03/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:22:17.872156+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "N04": {
+      "v1": {
+        "path": "N04/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:22:45.245256+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "N05": {
+      "v1": {
+        "path": "N05/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:22:52.155298+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "N06": {
+      "v1": {
+        "path": "N06/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:23:06.787245+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R01": {
+      "v1": {
+        "path": "R01/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:25.994213+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R02": {
+      "v1": {
+        "path": "R02/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:26.200496+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R03": {
+      "v1": {
+        "path": "R03/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:26.400946+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R04": {
+      "v1": {
+        "path": "R04/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:26.954889+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R05": {
+      "v1": {
+        "path": "R05/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:27.917729+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R06": {
+      "v1": {
+        "path": "R06/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:28.074613+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R07": {
+      "v1": {
+        "path": "R07/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:28.242195+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R08": {
+      "v1": {
+        "path": "R08/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:28.451085+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R09": {
+      "v1": {
+        "path": "R09/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:28.642636+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R10": {
+      "v1": {
+        "path": "R10/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:28.821086+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R11": {
+      "v1": {
+        "path": "R11/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:41.437467+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
+    },
+    "R12": {
+      "v1": {
+        "path": "R12/truth_v1.json",
+        "gmat_version": "R2025a",
+        "created_at": "2026-02-01T23:21:51.027353+00:00",
+        "schema_version": "1.0"
+      },
+      "latest": "v1"
     }
   }
 }

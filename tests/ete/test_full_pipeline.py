@@ -25,7 +25,12 @@ from typing import Dict, List, Optional
 import pytest
 import numpy as np
 
-from .conftest import REFERENCE_EPOCH
+from .conftest import (
+    REFERENCE_EPOCH,
+    create_test_plan,
+    create_test_initial_state,
+    create_test_config,
+)
 
 pytestmark = [
     pytest.mark.ete_tier_a,
@@ -40,7 +45,7 @@ class TestPlanInputValidation:
         """
         Verify plan input can be serialized and deserialized.
         """
-        from sim.core.types import PlanInput, Activity
+        from sim.core.types import Activity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=24)
@@ -62,7 +67,7 @@ class TestPlanInputValidation:
             ),
         ]
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="pipeline_test_001",
             start_time=start_time,
             end_time=end_time,
@@ -99,14 +104,12 @@ class TestPlanInputValidation:
         """
         Verify initial state can be serialized and deserialized.
         """
-        from sim.core.types import InitialState
-
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=reference_epoch,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
-            soc=0.85,
+            battery_soc=0.85,
         )
 
         # Serialize
@@ -115,7 +118,7 @@ class TestPlanInputValidation:
             "position_eci": list(initial_state.position_eci),
             "velocity_eci": list(initial_state.velocity_eci),
             "mass_kg": initial_state.mass_kg,
-            "soc": initial_state.soc,
+            "battery_soc": initial_state.battery_soc,
         }
 
         json_str = json.dumps(state_dict)
@@ -134,23 +137,22 @@ class TestSimulationExecution:
         Verify simulation completes for all fidelity levels.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="fidelity_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
         # Test LOW fidelity (always available)
@@ -158,7 +160,7 @@ class TestSimulationExecution:
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path / "low"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "low"), time_step_s=60.0),
         )
 
         assert result is not None, "LOW fidelity simulation failed"
@@ -169,47 +171,41 @@ class TestSimulationExecution:
         Verify simulation produces expected output files.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
-            soc=0.9,
+            battery_soc=0.9,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="output_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
         result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Check for output directory structure
-        viz_dir = tmp_path / "viz"
-
-        # At minimum, should have manifest
+        # Simulator creates a timestamped subdirectory, so search recursively
         expected_files = ["run_manifest.json"]
-        optional_files = ["scene.czml", "events.json", "profiles.parquet"]
 
         for expected in expected_files:
-            file_path = viz_dir / expected
-            if not file_path.exists():
-                # Also check root directory
-                file_path = tmp_path / expected
+            matches = list(tmp_path.glob(f"**/{expected}"))
+            summary_matches = list(tmp_path.glob("**/summary.json"))
 
-            assert file_path.exists() or (tmp_path / "summary.json").exists(), (
+            assert len(matches) > 0 or len(summary_matches) > 0, (
                 f"Missing expected output: {expected}\n"
                 f"Contents of {tmp_path}: {list(tmp_path.glob('**/*'))}"
             )
@@ -223,26 +219,25 @@ class TestOutputValidation:
         Verify manifest file has valid format.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="manifest_format_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
-            initial_state=InitialState(
+            initial_state=create_test_initial_state(
                 epoch=start_time,
                 position_eci=[6778.137, 0.0, 0.0],
                 velocity_eci=[0.0, 7.6686, 0.0],
                 mass_kg=500.0,
             ),
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Find manifest
@@ -263,26 +258,25 @@ class TestOutputValidation:
         Verify CZML file has valid Cesium format.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=3)
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="czml_format_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
-            initial_state=InitialState(
+            initial_state=create_test_initial_state(
                 epoch=start_time,
                 position_eci=[6778.137, 0.0, 0.0],
                 velocity_eci=[0.0, 7.6686, 0.0],
                 mass_kg=500.0,
             ),
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         czml_path = tmp_path / "viz" / "scene.czml"
@@ -309,7 +303,7 @@ class TestOutputValidation:
         Verify events file has valid format.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig, Activity
+        from sim.core.types import Fidelity, Activity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=12)
@@ -326,21 +320,21 @@ class TestOutputValidation:
         ]
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="events_format_test",
                 start_time=start_time,
                 end_time=end_time,
                 activities=activities,
             ),
-            initial_state=InitialState(
+            initial_state=create_test_initial_state(
                 epoch=start_time,
                 position_eci=[6778.137, 0.0, 0.0],
                 velocity_eci=[0.0, 7.6686, 0.0],
                 mass_kg=500.0,
-                soc=0.3,  # Low SOC may trigger events
+                battery_soc=0.3,  # Low SOC may trigger events
             ),
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         events_path = tmp_path / "viz" / "events.json"
@@ -374,26 +368,25 @@ class TestCrossComponentConsistency:
         Verify final state matches last profile entry.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="consistency_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
-            initial_state=InitialState(
+            initial_state=create_test_initial_state(
                 epoch=start_time,
                 position_eci=[6778.137, 0.0, 0.0],
                 velocity_eci=[0.0, 7.6686, 0.0],
                 mass_kg=500.0,
             ),
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Compare final state epoch with expected
@@ -408,36 +401,38 @@ class TestCrossComponentConsistency:
         Verify all event times are within simulation time bounds.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig, Activity
+        from sim.core.types import Fidelity, Activity
         from datetime import datetime
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
+        activities = [
+            Activity(
+                activity_id="test_act",
+                activity_type="imaging",
+                start_time=start_time + timedelta(hours=1),
+                end_time=start_time + timedelta(hours=1, minutes=5),
+                parameters={},
+            ),
+        ]
+
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="event_bounds_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[
-                    Activity(
-                        activity_id="test_act",
-                        activity_type="imaging",
-                        start_time=start_time + timedelta(hours=1),
-                        end_time=start_time + timedelta(hours=1, minutes=5),
-                        parameters={},
-                    ),
-                ],
+                activities=activities,
             ),
-            initial_state=InitialState(
+            initial_state=create_test_initial_state(
                 epoch=start_time,
                 position_eci=[6778.137, 0.0, 0.0],
                 velocity_eci=[0.0, 7.6686, 0.0],
                 mass_kg=500.0,
-                soc=0.5,
+                battery_soc=0.5,
             ),
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         events_path = tmp_path / "viz" / "events.json"
@@ -477,7 +472,7 @@ class TestFullPipelineIntegration:
         Complete pipeline test with realistic activities.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig, Activity
+        from sim.core.types import Fidelity, Activity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=24)
@@ -514,22 +509,22 @@ class TestFullPipelineIntegration:
             ),
         ]
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="full_pipeline_test",
             start_time=start_time,
             end_time=end_time,
             activities=activities,
         )
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 6.024, 4.766],  # ISS inclination
             mass_kg=500.0,
-            soc=0.9,
+            battery_soc=0.9,
         )
 
-        config = SimConfig(
+        config = create_test_config(
             output_dir=str(tmp_path),
             time_step_s=60.0,
         )
@@ -545,10 +540,12 @@ class TestFullPipelineIntegration:
         assert result is not None, "Simulation failed"
         assert result.final_state is not None, "No final state"
 
-        # Stage 2: Output files generated
-        viz_dir = tmp_path / "viz"
-        assert (viz_dir / "run_manifest.json").exists() or (tmp_path / "summary.json").exists(), (
-            "No output files generated"
+        # Stage 2: Output files generated (simulator creates timestamped subdirectory)
+        manifest_matches = list(tmp_path.glob("**/run_manifest.json"))
+        summary_matches = list(tmp_path.glob("**/summary.json"))
+        assert len(manifest_matches) > 0 or len(summary_matches) > 0, (
+            f"No output files generated\n"
+            f"Contents of {tmp_path}: {list(tmp_path.glob('**/*'))}"
         )
 
         # Stage 3: Validate physics
@@ -590,19 +587,18 @@ class TestFullPipelineIntegration:
         Running the same simulation twice should produce identical results.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="determinism_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -614,7 +610,7 @@ class TestFullPipelineIntegration:
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path / "run1"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "run1"), time_step_s=60.0),
         )
 
         # Run 2
@@ -622,7 +618,7 @@ class TestFullPipelineIntegration:
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path / "run2"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "run2"), time_step_s=60.0),
         )
 
         # Compare final states

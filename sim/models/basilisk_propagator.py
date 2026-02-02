@@ -96,6 +96,36 @@ class BasiliskConfig(PropagatorConfig):
     base_density: float = 1e-12  # kg/m^3 at reference altitude
     scale_height: float = 8500.0  # m
 
+    @classmethod
+    def for_fidelity(cls, fidelity: str) -> "BasiliskConfig":
+        """Create config appropriate for fidelity level."""
+        if fidelity == "LOW":
+            return cls(
+                gravity_degree=2,
+                gravity_order=0,
+                enable_drag=False,
+                enable_third_body=False,
+                atmosphere_model="exponential",
+            )
+        elif fidelity == "MEDIUM":
+            return cls(
+                gravity_degree=10,
+                gravity_order=10,
+                enable_drag=True,
+                enable_third_body=True,
+                atmosphere_model="exponential",
+            )
+        elif fidelity == "HIGH":
+            return cls(
+                gravity_degree=20,
+                gravity_order=20,
+                enable_drag=True,
+                enable_srp=True,
+                enable_third_body=True,
+                atmosphere_model="msise",
+            )
+        return cls()
+
 
 class BasiliskPropagator(PropagatorInterface):
     """

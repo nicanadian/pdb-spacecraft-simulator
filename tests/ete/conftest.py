@@ -473,7 +473,7 @@ def get_baseline_file_path(case_id: str, version: str = "v1") -> Path:
     """
     Get path to GMAT baseline file for a case.
 
-    Baselines are stored in validation/baselines/gmat/{case_id}/baseline_{version}.json
+    Baselines are stored in validation/baselines/gmat/{case_id}/truth_{version}.json
 
     Args:
         case_id: Case identifier (e.g., "R01", "pure_propagation_12h")
@@ -482,9 +482,31 @@ def get_baseline_file_path(case_id: str, version: str = "v1") -> Path:
     Returns:
         Path to baseline file
     """
-    # Convert case ID to directory format
-    case_dir = case_id.lower()
-    return Path(f"validation/baselines/gmat/{case_dir}/baseline_{version}.json")
+    base_dir = Path("validation/baselines/gmat")
+
+    # Try exact case_id first (e.g., "R01")
+    exact_path = base_dir / case_id / f"truth_{version}.json"
+    if exact_path.exists():
+        return exact_path
+
+    # Try uppercase (e.g., "r01" -> "R01")
+    upper_path = base_dir / case_id.upper() / f"truth_{version}.json"
+    if upper_path.exists():
+        return upper_path
+
+    # Try lowercase (e.g., "R01" -> "r01")
+    lower_path = base_dir / case_id.lower() / f"truth_{version}.json"
+    if lower_path.exists():
+        return lower_path
+
+    # Fallback: try baseline_{version}.json naming convention
+    for case_dir in [case_id, case_id.upper(), case_id.lower()]:
+        baseline_path = base_dir / case_dir / f"baseline_{version}.json"
+        if baseline_path.exists():
+            return baseline_path
+
+    # Return the expected path (will fail with helpful message)
+    return base_dir / case_id / f"truth_{version}.json"
 
 
 def get_truth_file_path(case_id: str, version: str = "v1") -> Path:
