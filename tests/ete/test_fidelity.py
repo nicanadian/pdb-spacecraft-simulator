@@ -25,7 +25,12 @@ from typing import Dict, Optional, Tuple
 import pytest
 import numpy as np
 
-from .conftest import REFERENCE_EPOCH
+from .conftest import (
+    REFERENCE_EPOCH,
+    create_test_plan,
+    create_test_initial_state,
+    create_test_config,
+)
 
 # Check Basilisk availability
 try:
@@ -48,12 +53,12 @@ class TestFidelitySelection:
         Verify LOW fidelity uses SGP4 propagator.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -61,15 +66,14 @@ class TestFidelitySelection:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="low_fidelity_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         assert result is not None
@@ -109,12 +113,12 @@ class TestMediumFidelity:
         This test requires Basilisk to be installed.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -122,15 +126,14 @@ class TestMediumFidelity:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="medium_fidelity_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         assert result is not None, "MEDIUM fidelity simulation returned None"
@@ -152,12 +155,12 @@ class TestMediumFidelity:
         Verify MEDIUM fidelity produces physically valid orbit.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -165,15 +168,14 @@ class TestMediumFidelity:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="medium_orbit_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Validate physics
@@ -204,7 +206,7 @@ class TestMediumFidelity:
         Drag should cause altitude decay over time for LEO.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         # Run for 24 hours to see drag effects
@@ -212,7 +214,7 @@ class TestMediumFidelity:
 
         # Start at 400 km - drag should be noticeable
         initial_altitude_km = 400.0
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6378.137 + initial_altitude_km, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -220,15 +222,14 @@ class TestMediumFidelity:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="medium_drag_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         final_pos = np.array(result.final_state.position_eci)
@@ -260,23 +261,22 @@ class TestMediumFidelity:
         Same inputs should produce identical outputs.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="determinism_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
         # Run twice
@@ -284,14 +284,14 @@ class TestMediumFidelity:
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path / "run1"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "run1"), time_step_s=60.0),
         )
 
         result2 = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path / "run2"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "run2"), time_step_s=60.0),
         )
 
         # Compare final states
@@ -321,12 +321,12 @@ class TestHighFidelity:
         Verify HIGH fidelity simulation completes.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -334,15 +334,14 @@ class TestHighFidelity:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="high_fidelity_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.HIGH,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=30.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=30.0),
         )
 
         assert result is not None, "HIGH fidelity simulation returned None"
@@ -366,23 +365,22 @@ class TestCrossFidelityComparison:
         agree within tolerance. Large discrepancies indicate a bug.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="cross_fidelity_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
         # Run LOW
@@ -390,7 +388,7 @@ class TestCrossFidelityComparison:
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path / "low"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "low"), time_step_s=60.0),
         )
 
         # Run MEDIUM
@@ -398,7 +396,7 @@ class TestCrossFidelityComparison:
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
         )
 
         # Compare final positions
@@ -432,37 +430,36 @@ class TestCrossFidelityComparison:
         Verify LOW and MEDIUM produce comparable altitudes.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="altitude_comparison_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
         low_result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path / "low"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "low"), time_step_s=60.0),
         )
 
         med_result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
         )
 
         low_alt = np.linalg.norm(low_result.final_state.position_eci) - 6378.137
@@ -489,37 +486,36 @@ class TestCrossFidelityComparison:
         Verify both LOW and MEDIUM produce bound orbits with valid energy.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="energy_comparison_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
         low_result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path / "low"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "low"), time_step_s=60.0),
         )
 
         med_result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
         )
 
         # Check both are bound orbits
@@ -559,7 +555,7 @@ class TestFidelityFallback:
         and log a warning, not crash.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         # Force Basilisk to be "unavailable" by mocking the import
         def mock_import_error(*args, **kwargs):
@@ -567,7 +563,7 @@ class TestFidelityFallback:
 
         # Patch the BasiliskPropagator import in engine
         import sim.engine
-        original_get_propagator = sim.engine._get_propagator
+        original_get_propagator = sim.engine._select_propagator
 
         def patched_get_propagator(fidelity, initial_state, plan, config):
             if fidelity in (Fidelity.MEDIUM, Fidelity.HIGH):
@@ -581,12 +577,12 @@ class TestFidelityFallback:
                 return propagator, "sgp4-2.22 (fallback)"
             return original_get_propagator(fidelity, initial_state, plan, config)
 
-        monkeypatch.setattr(sim.engine, "_get_propagator", patched_get_propagator)
+        monkeypatch.setattr(sim.engine, "_select_propagator", patched_get_propagator)
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -595,15 +591,14 @@ class TestFidelityFallback:
 
         # Should not crash
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="fallback_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         assert result is not None, "Fallback simulation failed"
@@ -614,12 +609,12 @@ class TestFidelityFallback:
         Verify all fidelity levels produce valid output (with or without Basilisk).
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=1)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -628,15 +623,14 @@ class TestFidelityFallback:
 
         for fidelity in [Fidelity.LOW, Fidelity.MEDIUM, Fidelity.HIGH]:
             result = simulate(
-                plan=PlanInput(
+                plan=create_test_plan(
                     plan_id=f"fidelity_{fidelity.value}_test",
                     start_time=start_time,
                     end_time=end_time,
-                    activities=[],
                 ),
                 initial_state=initial_state,
                 fidelity=fidelity,
-                config=SimConfig(
+                config=create_test_config(
                     output_dir=str(tmp_path / fidelity.value.lower()),
                     time_step_s=60.0,
                 ),
@@ -671,37 +665,36 @@ class TestExtendedCrossFidelity:
         Longer duration amplifies any systematic differences.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=24)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="24h_comparison_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
         low_result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path / "low"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "low"), time_step_s=60.0),
         )
 
         med_result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
         )
 
         low_pos = np.array(low_result.final_state.position_eci)
@@ -727,38 +720,37 @@ class TestExtendedCrossFidelity:
         SSO has specific J2 requirements that MEDIUM should model better.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=12)
 
         # SSO at 600 km, ~97.8° inclination
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6978.137, 0.0, 0.0],
             velocity_eci=[0.0, 0.598, 7.509],  # ~97.8° inclination
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="sso_comparison_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
         low_result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path / "low"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "low"), time_step_s=60.0),
         )
 
         med_result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.MEDIUM,
-            config=SimConfig(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path / "medium"), time_step_s=60.0),
         )
 
         # Both should complete

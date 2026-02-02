@@ -22,7 +22,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from .conftest import REFERENCE_EPOCH
+from .conftest import (
+    REFERENCE_EPOCH,
+    create_test_plan,
+    create_test_initial_state,
+    create_test_config,
+)
 
 # Skip all tests if Playwright is not installed
 try:
@@ -45,7 +50,7 @@ pytestmark = [
 class TestCoreModules:
     """Test that core modules are functional (not just importable)."""
 
-    def test_simulation_engine_functional(self, reference_epoch):
+    def test_simulation_engine_functional(self, reference_epoch, tmp_path):
         """
         Verify simulation engine can execute a basic scenario.
 
@@ -53,32 +58,36 @@ class TestCoreModules:
         pipeline is functional.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=1)
 
         # Deterministic initial state
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="smoke_test_engine",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
-        # Run with minimal config (no output dir needed for smoke test)
+        config = create_test_config(
+            output_dir=str(tmp_path),
+            time_step_s=60.0,
+        )
+
+        # Run with minimal config
         result = simulate(
             plan=plan,
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=config,
         )
 
         # Meaningful assertions
@@ -196,7 +205,7 @@ class TestServiceConnectivity:
 class TestPhysicsInvariants:
     """Test basic physics invariants in simulation output."""
 
-    def test_orbit_remains_bound(self, reference_epoch, physics_validator):
+    def test_orbit_remains_bound(self, reference_epoch, physics_validator, tmp_path):
         """
         Verify spacecraft remains in bound orbit (negative energy).
 
@@ -204,12 +213,12 @@ class TestPhysicsInvariants:
         throughout the simulation.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -217,15 +226,14 @@ class TestPhysicsInvariants:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="bound_orbit_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Compute specific orbital energy
@@ -239,20 +247,20 @@ class TestPhysicsInvariants:
             "This indicates a propagation error or incorrect initial conditions"
         )
 
-    def test_mass_conservation(self, reference_epoch):
+    def test_mass_conservation(self, reference_epoch, tmp_path):
         """
         Verify mass is conserved when no propulsion is active.
 
         Without active thrust, spacecraft mass should remain constant.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=1)
 
         initial_mass = 500.0
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -260,15 +268,15 @@ class TestPhysicsInvariants:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="mass_conservation_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],  # No activities = no propulsion
+                # No activities = no propulsion
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         final_mass = result.final_state.mass_kg

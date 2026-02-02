@@ -36,6 +36,150 @@ REFERENCE_EPOCH = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
 
 # =============================================================================
+# HELPER FUNCTIONS FOR TEST DATA CREATION
+# =============================================================================
+
+
+def create_test_plan(
+    plan_id: str,
+    start_time: datetime,
+    end_time: datetime,
+    activities: list = None,
+    spacecraft_id: str = "TEST-001",
+) -> "PlanInput":
+    """
+    Create a PlanInput for testing.
+
+    This helper ensures correct PlanInput construction since PlanInput
+    derives start_time/end_time from activities.
+
+    Args:
+        plan_id: Plan identifier
+        start_time: Desired plan start time
+        end_time: Desired plan end time
+        activities: Optional list of Activity objects
+        spacecraft_id: Spacecraft identifier
+
+    Returns:
+        PlanInput instance
+    """
+    from sim.core.types import PlanInput, Activity
+
+    if activities is None:
+        activities = []
+
+    # If no activities provided, create a spanning idle activity
+    # This ensures start_time/end_time properties work correctly
+    if not activities:
+        activities = [
+            Activity(
+                activity_id=f"{plan_id}_idle",
+                activity_type="idle",
+                start_time=start_time,
+                end_time=end_time,
+                parameters={},
+            )
+        ]
+
+    return PlanInput(
+        spacecraft_id=spacecraft_id,
+        plan_id=plan_id,
+        activities=activities,
+    )
+
+
+def create_test_initial_state(
+    epoch: datetime,
+    position_eci: list = None,
+    velocity_eci: list = None,
+    mass_kg: float = 500.0,
+    battery_soc: float = 0.9,
+    propellant_kg: float = 50.0,
+) -> "InitialState":
+    """
+    Create an InitialState for testing.
+
+    This helper ensures correct InitialState construction with proper
+    field names (battery_soc not soc).
+
+    Args:
+        epoch: Initial epoch
+        position_eci: Position in ECI frame [km]
+        velocity_eci: Velocity in ECI frame [km/s]
+        mass_kg: Spacecraft mass
+        battery_soc: Battery state of charge [0, 1]
+        propellant_kg: Propellant mass
+
+    Returns:
+        InitialState instance
+    """
+    from sim.core.types import InitialState
+    import numpy as np
+
+    if position_eci is None:
+        position_eci = [6778.137, 0.0, 0.0]  # ~400 km altitude
+
+    if velocity_eci is None:
+        velocity_eci = [0.0, 7.6686, 0.0]  # Circular velocity
+
+    return InitialState(
+        epoch=epoch,
+        position_eci=np.array(position_eci),
+        velocity_eci=np.array(velocity_eci),
+        mass_kg=mass_kg,
+        battery_soc=battery_soc,
+        propellant_kg=propellant_kg,
+    )
+
+
+def create_test_config(
+    output_dir: str,
+    time_step_s: float = 60.0,
+    fidelity: "Fidelity" = None,
+    random_seed: int = 42,
+) -> "SimConfig":
+    """
+    Create a SimConfig for testing.
+
+    This helper ensures correct SimConfig construction with required
+    SpacecraftConfig.
+
+    Args:
+        output_dir: Output directory for simulation artifacts
+        time_step_s: Time step in seconds
+        fidelity: Fidelity level (default LOW)
+        random_seed: Random seed for reproducibility
+
+    Returns:
+        SimConfig instance
+    """
+    from sim.core.types import SimConfig, SpacecraftConfig, Fidelity
+
+    if fidelity is None:
+        fidelity = Fidelity.LOW
+
+    spacecraft = SpacecraftConfig(
+        spacecraft_id="TEST-001",
+        dry_mass_kg=450.0,
+        initial_propellant_kg=50.0,
+        battery_capacity_wh=5000.0,
+        storage_capacity_gb=500.0,
+        solar_panel_area_m2=10.0,
+        solar_efficiency=0.30,
+        base_power_w=200.0,
+    )
+
+    return SimConfig(
+        fidelity=fidelity,
+        time_step_s=time_step_s,
+        spacecraft=spacecraft,
+        output_dir=output_dir,
+        enable_cache=False,  # Disable cache for tests
+        random_seed=random_seed,
+    )
+
+
+# =============================================================================
 # PYTEST CONFIGURATION
 # =============================================================================
 
@@ -423,18 +567,18 @@ def real_simulation_run(tmp_path, reference_epoch) -> CompletedRunData:
     viewer tests validate actual simulator output.
     """
     from sim.engine import simulate
-    from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig, Activity
+    from sim.core.types import Fidelity, Activity
 
     start_time = reference_epoch
     end_time = start_time + timedelta(hours=6)
 
     # Deterministic initial state for ~400km circular orbit
-    initial_state = InitialState(
+    initial_state = create_test_initial_state(
         epoch=start_time,
         position_eci=[6778.137, 0.0, 0.0],  # km, exactly Earth radius + 400km
         velocity_eci=[0.0, 7.6686, 0.0],    # km/s, circular orbit velocity
         mass_kg=500.0,
-        soc=0.85,
+        battery_soc=0.85,
     )
 
     # Add realistic activities
@@ -455,14 +599,14 @@ def real_simulation_run(tmp_path, reference_epoch) -> CompletedRunData:
         ),
     ]
 
-    plan = PlanInput(
+    plan = create_test_plan(
         plan_id="ete_real_sim_001",
         start_time=start_time,
         end_time=end_time,
         activities=activities,
     )
 
-    config = SimConfig(
+    config = create_test_config(
         output_dir=str(tmp_path),
         time_step_s=60.0,
     )

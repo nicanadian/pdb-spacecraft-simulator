@@ -22,8 +22,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from .fixtures.data import get_tier_a_case_ids, create_test_plan
-from .conftest import REFERENCE_EPOCH
+from .fixtures.data import get_tier_a_case_ids
+from .conftest import (
+    REFERENCE_EPOCH,
+    create_test_plan,
+    create_test_initial_state,
+    create_test_config,
+)
 
 # Skip all tests if Playwright is not installed
 try:
@@ -53,26 +58,25 @@ class TestSimulatorExecution:
         This is the fundamental test - if this fails, nothing else will work.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
         )
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="basic_propagation_test",
             start_time=start_time,
             end_time=end_time,
-            activities=[],
         )
 
-        config = SimConfig(
+        config = create_test_config(
             output_dir=str(tmp_path),
             time_step_s=60.0,
         )
@@ -106,17 +110,17 @@ class TestSimulatorExecution:
         Validates that activities are processed and affect the simulation.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig, Activity
+        from sim.core.types import Fidelity, Activity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=4)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
-            soc=0.9,
+            battery_soc=0.9,
         )
 
         # Add activities that should affect the simulation
@@ -137,14 +141,14 @@ class TestSimulatorExecution:
             ),
         ]
 
-        plan = PlanInput(
+        plan = create_test_plan(
             plan_id="activity_test",
             start_time=start_time,
             end_time=end_time,
             activities=activities,
         )
 
-        config = SimConfig(
+        config = create_test_config(
             output_dir=str(tmp_path),
             time_step_s=60.0,
         )
@@ -176,12 +180,12 @@ class TestPhysicsInvariants:
         force-free propagation with gravity only.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -189,15 +193,14 @@ class TestPhysicsInvariants:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="energy_conservation_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Validate energy conservation
@@ -225,12 +228,12 @@ class TestPhysicsInvariants:
         Angular momentum should be exactly conserved in central force fields.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -238,15 +241,14 @@ class TestPhysicsInvariants:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="momentum_conservation_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Validate momentum conservation
@@ -272,13 +274,13 @@ class TestPhysicsInvariants:
         This is a basic sanity check - negative altitude means crash.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
         import numpy as np
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=24)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -286,15 +288,14 @@ class TestPhysicsInvariants:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="altitude_check_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Check final altitude
@@ -340,34 +341,33 @@ class TestConstraintValidation:
         This is a documented invariant that must be enforced.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=12)
 
         # Start with moderate SOC to allow both charge and discharge
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
             mass_kg=500.0,
-            soc=0.5,
+            battery_soc=0.5,
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="soc_bounds_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
-        if hasattr(result.final_state, "soc"):
-            soc = result.final_state.soc
+        if hasattr(result.final_state, "battery_soc"):
+            soc = result.final_state.battery_soc
             assert 0.0 <= soc <= 1.0, (
                 f"SOC BOUNDS VIOLATION\n"
                 f"  Final SOC: {soc:.4f}\n"
@@ -383,12 +383,12 @@ class TestConstraintValidation:
         Negative mass is physically impossible.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -396,15 +396,14 @@ class TestConstraintValidation:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="mass_check_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         assert result.final_state.mass_kg > 0, (
@@ -421,12 +420,12 @@ class TestConstraintValidation:
         Time must always move forward in simulation profiles.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -434,15 +433,14 @@ class TestConstraintValidation:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="time_monotonic_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Check profiles time index if available
@@ -468,12 +466,12 @@ class TestOutputArtifacts:
         Verify all JSON output files are syntactically valid.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=1)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -481,15 +479,14 @@ class TestOutputArtifacts:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="json_validity_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Check all JSON files are valid
@@ -506,12 +503,12 @@ class TestOutputArtifacts:
         Verify manifest contains all required fields.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=1)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -519,15 +516,14 @@ class TestOutputArtifacts:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="manifest_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         manifest_path = tmp_path / "viz" / "run_manifest.json"
@@ -557,12 +553,12 @@ class TestViewerIntegration:
         This is the core integration test between simulator and viewer.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=2)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],
@@ -570,15 +566,14 @@ class TestViewerIntegration:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="viewer_integration_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(output_dir=str(tmp_path), time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Try to load in viewer

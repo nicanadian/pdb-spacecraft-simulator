@@ -24,7 +24,12 @@ from typing import Dict, List, Optional, Tuple
 import pytest
 import numpy as np
 
-from .conftest import REFERENCE_EPOCH
+from .conftest import (
+    REFERENCE_EPOCH,
+    create_test_plan,
+    create_test_initial_state,
+    create_test_config,
+)
 
 pytestmark = [
     pytest.mark.ete_tier_a,
@@ -50,7 +55,7 @@ def load_reference_access_windows(station_id: str) -> Optional[List[Dict]]:
 class TestEclipseComputation:
     """Test eclipse computation accuracy."""
 
-    def test_eclipse_detection_basic(self, reference_epoch):
+    def test_eclipse_detection_basic(self, reference_epoch, tmp_path):
         """
         Verify eclipse detection for LEO orbit.
 
@@ -58,31 +63,30 @@ class TestEclipseComputation:
         once per orbit (~90 minutes for 400km altitude).
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         # Run for 2 orbits (~3 hours) to capture at least one eclipse
         end_time = start_time + timedelta(hours=3)
 
         # ISS-like orbit (51.6° inclination)
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 6.024, 4.766],  # ~51.6° inclination
             mass_kg=500.0,
-            soc=0.9,
+            battery_soc=0.9,
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="eclipse_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         assert result is not None
@@ -105,19 +109,19 @@ class TestEclipseComputation:
                     f"Eclipse interval {i} missing end time"
                 )
 
-    def test_eclipse_duration_reasonable(self, reference_epoch):
+    def test_eclipse_duration_reasonable(self, reference_epoch, tmp_path):
         """
         Verify eclipse duration is physically reasonable.
 
         For LEO (400km), eclipse duration should be ~30-35 minutes.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 7.6686, 0.0],  # Equatorial orbit
@@ -125,15 +129,14 @@ class TestEclipseComputation:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="eclipse_duration_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         if hasattr(result, "eclipse_intervals") and result.eclipse_intervals:
@@ -169,12 +172,12 @@ class TestEclipseComputation:
 class TestEclipseTimingAccuracy:
     """Test eclipse timing accuracy against reference (Tier B)."""
 
-    def test_eclipse_entry_timing(self, reference_epoch, tolerance_config):
+    def test_eclipse_entry_timing(self, reference_epoch, tolerance_config, tmp_path):
         """
         Verify eclipse entry times match reference within tolerance.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         # Load reference eclipse data if available
         reference_path = REFERENCE_DIR / "eclipse_reference.json"
@@ -187,7 +190,7 @@ class TestEclipseTimingAccuracy:
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=24)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=reference.get("initial_position", [6778.137, 0.0, 0.0]),
             velocity_eci=reference.get("initial_velocity", [0.0, 7.6686, 0.0]),
@@ -195,15 +198,14 @@ class TestEclipseTimingAccuracy:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="eclipse_timing_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         if not hasattr(result, "eclipse_intervals") or not result.eclipse_intervals:
@@ -276,18 +278,18 @@ class TestGroundStationAccess:
             },
         ]
 
-    def test_access_windows_computed(self, reference_epoch, ground_stations):
+    def test_access_windows_computed(self, reference_epoch, ground_stations, tmp_path):
         """
         Verify access windows are computed for ground stations.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=24)
 
         # Polar orbit for global coverage
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6978.137, 0.0, 0.0],  # 600 km SSO
             velocity_eci=[0.0, 0.598, 7.509],   # ~97.8° inclination
@@ -295,15 +297,14 @@ class TestGroundStationAccess:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="access_window_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         # Check for access windows in output
@@ -323,19 +324,19 @@ class TestGroundStationAccess:
                         f"Window {i} for {station_id} missing LOS"
                     )
 
-    def test_aos_before_los(self, reference_epoch):
+    def test_aos_before_los(self, reference_epoch, tmp_path):
         """
         Verify AOS is always before LOS for all windows.
 
         This is a fundamental invariant from CLAUDE.md.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=12)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 6.024, 4.766],
@@ -343,15 +344,14 @@ class TestGroundStationAccess:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="aos_los_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         if hasattr(result, "access_windows") and result.access_windows:
@@ -386,7 +386,7 @@ class TestContactWindowAccuracy:
 
     @pytest.mark.parametrize("station_id", ["SVALBARD", "FAIRBANKS", "MCMURDO"])
     def test_contact_window_timing(
-        self, station_id: str, reference_epoch, tolerance_config
+        self, station_id: str, reference_epoch, tolerance_config, tmp_path
     ):
         """
         Verify contact window times match reference within tolerance.
@@ -396,13 +396,13 @@ class TestContactWindowAccuracy:
             pytest.skip(f"No reference data for {station_id}")
 
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         # Get initial state from reference or use default
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=24)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6978.137, 0.0, 0.0],
             velocity_eci=[0.0, 0.598, 7.509],
@@ -410,15 +410,14 @@ class TestContactWindowAccuracy:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id=f"contact_{station_id.lower()}_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         if not hasattr(result, "access_windows") or not result.access_windows:
@@ -458,19 +457,19 @@ class TestContactWindowAccuracy:
                 f"  Tolerance:     {timing_tolerance_s:.1f} seconds"
             )
 
-    def test_pass_duration_reasonable(self, reference_epoch):
+    def test_pass_duration_reasonable(self, reference_epoch, tmp_path):
         """
         Verify pass durations are physically reasonable.
 
         For LEO, passes are typically 5-15 minutes.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=12)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 6.024, 4.766],
@@ -478,15 +477,14 @@ class TestContactWindowAccuracy:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="pass_duration_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         if hasattr(result, "access_windows") and result.access_windows:
@@ -518,17 +516,17 @@ class TestContactWindowAccuracy:
 class TestContactLinkBudget:
     """Test contact window link budget calculations."""
 
-    def test_elevation_angle_bounds(self, reference_epoch):
+    def test_elevation_angle_bounds(self, reference_epoch, tmp_path):
         """
         Verify elevation angles are within valid bounds.
         """
         from sim.engine import simulate
-        from sim.core.types import Fidelity, InitialState, PlanInput, SimConfig
+        from sim.core.types import Fidelity
 
         start_time = reference_epoch
         end_time = start_time + timedelta(hours=6)
 
-        initial_state = InitialState(
+        initial_state = create_test_initial_state(
             epoch=start_time,
             position_eci=[6778.137, 0.0, 0.0],
             velocity_eci=[0.0, 6.024, 4.766],
@@ -536,15 +534,14 @@ class TestContactLinkBudget:
         )
 
         result = simulate(
-            plan=PlanInput(
+            plan=create_test_plan(
                 plan_id="elevation_test",
                 start_time=start_time,
                 end_time=end_time,
-                activities=[],
             ),
             initial_state=initial_state,
             fidelity=Fidelity.LOW,
-            config=SimConfig(time_step_s=60.0),
+            config=create_test_config(output_dir=str(tmp_path), time_step_s=60.0),
         )
 
         if hasattr(result, "access_windows") and result.access_windows:
