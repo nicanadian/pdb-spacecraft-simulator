@@ -23,8 +23,9 @@ class ServiceConfig:
 
     aerie_graphql_url: str = "http://localhost:8080/v1/graphql"
     aerie_ui_url: str = "http://localhost"
-    viewer_url: str = "http://localhost:3002"
+    viewer_url: str = "http://localhost:3004"  # Vite may use different ports
     mcp_server_url: str = "http://localhost:8765"
+    aerie_admin_secret: str = "hasura_admin_secret"  # Default from deployment .env
 
 
 class AerieServiceManager:
@@ -111,6 +112,9 @@ class AerieServiceManager:
         graphql_url = os.environ.get(
             "AERIE_GRAPHQL_URL", "http://localhost:8080/v1/graphql"
         )
+        admin_secret = os.environ.get(
+            "HASURA_GRAPHQL_ADMIN_SECRET", "hasura_admin_secret"
+        )
 
         start_time = time.time()
         while time.time() - start_time < timeout:
@@ -118,6 +122,7 @@ class AerieServiceManager:
                 response = requests.post(
                     graphql_url,
                     json={"query": "{ __typename }"},
+                    headers={"x-hasura-admin-secret": admin_secret},
                     timeout=5,
                 )
                 if response.status_code == 200:
@@ -135,11 +140,15 @@ class AerieServiceManager:
         graphql_url = os.environ.get(
             "AERIE_GRAPHQL_URL", "http://localhost:8080/v1/graphql"
         )
+        admin_secret = os.environ.get(
+            "HASURA_GRAPHQL_ADMIN_SECRET", "hasura_admin_secret"
+        )
 
         try:
             response = requests.post(
                 graphql_url,
                 json={"query": "{ __typename }"},
+                headers={"x-hasura-admin-secret": admin_secret},
                 timeout=5,
             )
             return response.status_code == 200

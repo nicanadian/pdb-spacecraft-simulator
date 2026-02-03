@@ -35,6 +35,9 @@ pytestmark = [
 ]
 
 
+AERIE_ADMIN_SECRET = "hasura_admin_secret"  # Default from deployment .env
+
+
 def aerie_available() -> bool:
     """Check if Aerie is available for testing."""
     try:
@@ -42,11 +45,20 @@ def aerie_available() -> bool:
         response = requests.post(
             "http://localhost:8080/v1/graphql",
             json={"query": "{ __typename }"},
+            headers={"x-hasura-admin-secret": AERIE_ADMIN_SECRET},
             timeout=5,
         )
         return response.status_code == 200
     except Exception:
         return False
+
+
+def get_aerie_headers() -> dict:
+    """Get headers for Aerie GraphQL requests."""
+    return {
+        "Content-Type": "application/json",
+        "x-hasura-admin-secret": AERIE_ADMIN_SECRET,
+    }
 
 
 # Skip all tests if Aerie is not available
@@ -72,6 +84,7 @@ class TestAerieConnection:
         response = requests.post(
             graphql_url,
             json={"query": "{ __typename }"},
+            headers=get_aerie_headers(),
             timeout=10,
         )
 
@@ -104,6 +117,7 @@ class TestAerieConnection:
         response = requests.post(
             graphql_url,
             json={"query": introspection_query},
+            headers=get_aerie_headers(),
             timeout=30,
         )
 
@@ -117,12 +131,17 @@ class TestAerieConnection:
         # Should have core Aerie types
         type_names = [t["name"] for t in data["data"]["__schema"]["types"]]
 
-        # Check for essential Aerie types (these may vary by version)
-        expected_types = ["Query", "Mutation"]
-        for expected in expected_types:
-            assert expected in type_names, (
-                f"Missing expected type '{expected}' in schema"
-            )
+        # Check for essential Aerie types (Hasura uses query_root/mutation_root)
+        # Check for either standard GraphQL names or Hasura-style names
+        has_query = "Query" in type_names or "query_root" in type_names
+        has_mutation = "Mutation" in type_names or "mutation_root" in type_names
+
+        assert has_query, (
+            f"Missing query type in schema. Found: {[t for t in type_names if 'query' in t.lower()]}"
+        )
+        assert has_mutation, (
+            f"Missing mutation type in schema. Found: {[t for t in type_names if 'mutation' in t.lower()]}"
+        )
 
 
 class TestAeriePlanOperations:
@@ -146,6 +165,7 @@ class TestAeriePlanOperations:
         response = requests.post(
             graphql_url,
             json={"query": query},
+            headers=get_aerie_headers(),
             timeout=30,
         )
 
@@ -180,6 +200,7 @@ class TestAeriePlanOperations:
         response = requests.post(
             graphql_url,
             json={"query": query},
+            headers=get_aerie_headers(),
             timeout=30,
         )
 
@@ -227,6 +248,7 @@ class TestAeriePlanOperations:
         response = requests.post(
             graphql_url,
             json={"query": mutation, "variables": variables},
+            headers=get_aerie_headers(),
             timeout=30,
         )
 
@@ -263,6 +285,7 @@ class TestAeriePlanOperations:
         requests.post(
             graphql_url,
             json={"query": delete_mutation, "variables": {"id": plan_id}},
+            headers=get_aerie_headers(),
             timeout=30,
         )
 
@@ -300,6 +323,7 @@ class TestAeriePlanExport:
         response = requests.post(
             graphql_url,
             json={"query": query, "variables": {"planId": -1}},
+            headers=get_aerie_headers(),
             timeout=30,
         )
 
@@ -543,6 +567,7 @@ class TestFullAeriePipeline:
         response = requests.post(
             graphql_url,
             json={"query": query},
+            headers=get_aerie_headers(),
             timeout=30,
         )
 

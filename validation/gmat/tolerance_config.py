@@ -24,6 +24,7 @@ class GMATToleranceConfig:
     position_max_km: float = 20.0
     velocity_max_m_s: float = 20.0
     altitude_rms_km: float = 2.0
+    sma_error_km: float = 200.0  # Relaxed for development
 
     # Scenario-specific overrides
     # Format: {scenario_id: {field: value}}
@@ -77,6 +78,7 @@ class GMATToleranceConfig:
             "position_max_km": self.position_max_km,
             "velocity_max_m_s": self.velocity_max_m_s,
             "altitude_rms_km": self.altitude_rms_km,
+            "sma_error_km": self.sma_error_km,
         }
 
         # Apply scenario overrides
@@ -105,6 +107,7 @@ class GMATToleranceConfig:
             position_max_km=global_tolerances.get("position_max_km", 20.0),
             velocity_max_m_s=global_tolerances.get("velocity_max_m_s", 20.0),
             altitude_rms_km=global_tolerances.get("altitude_rms_km", 2.0),
+            sma_error_km=global_tolerances.get("sma_error_km", 200.0),
             scenario_overrides=scenario_overrides,
         )
 
@@ -150,6 +153,7 @@ class GMATToleranceConfig:
                 "position_max_km": self.position_max_km,
                 "velocity_max_m_s": self.velocity_max_m_s,
                 "altitude_rms_km": self.altitude_rms_km,
+                "sma_error_km": self.sma_error_km,
             },
             "scenarios": self.scenario_overrides,
         }

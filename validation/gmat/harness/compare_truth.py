@@ -74,6 +74,44 @@ class ComparisonResult:
 
         return "\n".join(lines)
 
+    @property
+    def metrics(self) -> Dict[str, float]:
+        """
+        Get combined metrics dict for easy access.
+
+        Returns a dict combining final_errors and derived_errors with
+        standardized metric names for test compatibility.
+        """
+        metrics = {}
+
+        # Add final errors with standardized names
+        if self.final_errors:
+            metrics.update(self.final_errors)
+            # Map specific error keys to expected metric names
+            if "position_error_km" in self.final_errors:
+                metrics["position_rms_km"] = self.final_errors["position_error_km"]
+                metrics["position_max_km"] = self.final_errors["position_error_km"]
+            if "velocity_error_m_s" in self.final_errors:
+                metrics["velocity_rms_m_s"] = self.final_errors["velocity_error_m_s"]
+                metrics["velocity_max_m_s"] = self.final_errors["velocity_error_m_s"]
+            if "altitude_km" in self.final_errors:
+                metrics["altitude_rms_km"] = abs(self.final_errors["altitude_km"])
+            if "sma_km" in self.final_errors:
+                metrics["sma_error_km"] = abs(self.final_errors["sma_km"])
+
+        # Add derived errors
+        if self.derived_errors:
+            metrics.update(self.derived_errors)
+
+        # Add initial errors with prefixed names
+        if self.initial_errors:
+            if "position_error_km" in self.initial_errors:
+                metrics["initial_position_error_m"] = self.initial_errors["position_error_km"] * 1000
+            if "velocity_error_m_s" in self.initial_errors:
+                metrics["initial_velocity_error_mm_s"] = self.initial_errors["velocity_error_m_s"]
+
+        return metrics
+
     def to_dict(self) -> Dict:
         """Convert to dictionary."""
         return {

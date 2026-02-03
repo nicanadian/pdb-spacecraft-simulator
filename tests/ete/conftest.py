@@ -440,12 +440,38 @@ def tolerance_config():
     return ETEToleranceConfig(base_config)
 
 
+class ETEScenarioRunner:
+    """
+    Wrapper for ScenarioRunner that enforces MEDIUM fidelity for GMAT comparisons.
+
+    For proper GMAT validation, we must use numerical integration (MEDIUM/HIGH fidelity),
+    not SGP4 (LOW fidelity). This wrapper disables the fallback to LOW fidelity.
+    """
+
+    def __init__(self, runner):
+        self._runner = runner
+
+    def run_scenario(self, case_id: str, compare_truth: bool = True, **kwargs):
+        """Run scenario with MEDIUM fidelity enforcement."""
+        # Disable fallback to LOW fidelity for proper GMAT comparison
+        return self._runner.run_scenario(
+            case_id=case_id,
+            compare_truth=compare_truth,
+            fallback_to_low_fidelity=False,  # CRITICAL: Don't fall back to SGP4
+            **kwargs,
+        )
+
+    def __getattr__(self, name):
+        return getattr(self._runner, name)
+
+
 @pytest.fixture(scope="session")
 def scenario_runner():
     """
     Get scenario runner for GMAT comparison tests.
 
     Returns a ScenarioRunner instance configured for ETE tests.
+    Uses MEDIUM fidelity (numerical integration) without fallback to SGP4.
     """
     try:
         from validation.gmat.harness.scenario_runner import ScenarioRunner
@@ -453,7 +479,8 @@ def scenario_runner():
         output_dir = Path("validation/output/ete_scenarios")
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        return ScenarioRunner(output_base_dir=output_dir)
+        base_runner = ScenarioRunner(output_base_dir=output_dir)
+        return ETEScenarioRunner(base_runner)
     except ImportError:
         pytest.skip("Validation module not available")
 

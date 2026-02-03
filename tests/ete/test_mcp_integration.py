@@ -210,9 +210,8 @@ class TestMCPPlanExport:
         ]
 
         plan = PlanInput(
+            spacecraft_id="mcp_test_spacecraft",
             plan_id="mcp_export_test",
-            start_time=start_time,
-            end_time=end_time,
             activities=activities,
         )
 
