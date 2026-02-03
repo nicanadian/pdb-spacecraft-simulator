@@ -1,6 +1,15 @@
 # PDB Spacecraft Simulator
 
-Schedule-driven spacecraft mission simulation stack for LEO/VLEO constellations. Integrates with NASA Aerie/PLANDEV schedules and supports three fidelity modes (LOW/MEDIUM/HIGH).
+Schedule-driven spacecraft mission simulation stack for LEO/VLEO constellations. Integrates with NASA Aerie/PLANDEV schedules and supports three fidelity modes (LOW/MEDIUM/HIGH). Simulates Hall-effect electric propulsion, attitude profiles, power/storage, S/X/Ka link budgets, ground contacts, onboard processing/storage flows, and atmospheric drag.
+
+## Features
+
+- **Three Fidelity Modes**: LOW (SGP4), MEDIUM (Basilisk), HIGH (Basilisk full)
+- **NASA Aerie Integration**: Import/export plans with anchor chain resolution
+- **CesiumJS Visualization**: Web-based 3D mission viewer with SolidJS
+- **MCP Server**: AI integration via Model Context Protocol
+- **GMAT Validation**: Regression testing against GMAT truth files
+- **Comprehensive Activity Support**: Orbit lowering, imaging, downlink, station keeping, and more
 
 ## Installation
 
@@ -10,6 +19,9 @@ pip install -e .
 
 # With development dependencies
 pip install -e ".[dev]"
+
+# With validation dependencies (for GMAT comparison)
+pip install -e ".[dev,validation]"
 ```
 
 ## Quick Start
@@ -181,17 +193,77 @@ runs/<timestamp>_<runid>/
   viz/                  # Visualization exports
 ```
 
+## Mission Viewer
+
+The web-based mission visualization viewer uses CesiumJS and SolidJS:
+
+```bash
+# Start viewer development server
+cd viewer
+npm install
+npm run dev
+# Open http://localhost:3002?run=../runs/<run_id>
+```
+
+Features:
+- 3D orbit visualization with CesiumJS
+- Multiple workspaces: Mission Overview, Maneuver Planning, VLEO Drag, Anomaly Response, Payload Ops
+- Timeline with activity and event markers
+- Real-time playback controls
+- Alert and constraint violation display
+
+## MCP Server
+
+Model Context Protocol server for AI integration:
+
+```bash
+# Start MCP HTTP server (for testing)
+python -m sim_mcp.http_server --port 8765
+
+# Tools available:
+# - run_simulation: Execute simulations
+# - get_run_status/results: Query run state
+# - list_runs: List available runs
+# - aerie_status: Check Aerie health
+# - generate_viz: Create visualization
+# - compare_runs: Diff two simulation runs
+```
+
 ## Development
 
 ```bash
-# Run tests
+# Run all tests
 pytest
 
-# Run specific test file
-pytest tests/test_aerie_parser.py
+# Run unit tests only
+pytest tests/ --ignore=tests/ete
+
+# Run ETE (end-to-end) tests
+pytest tests/ete/ -v
+
+# Run ETE smoke tests (fast)
+pytest tests/ete/ -m "ete_smoke" -v
 
 # Run with coverage
 pytest --cov=sim
+
+# Run GMAT validation
+python validation/run_validation.py
+```
+
+## Aerie Integration
+
+```bash
+# Check Aerie status
+simrun aerie status
+
+# Export plan from Aerie
+simrun aerie export --plan-id 123 --output plan.json
+
+# Full Aerie workflow
+make aerie-up           # Start Aerie services
+make aerie-health       # Check health
+make aerie-down         # Stop services
 ```
 
 ## Examples
@@ -202,3 +274,27 @@ See the `examples/` directory for sample plans:
 - `aerie_export.json` - Aerie export example with anchor chains
 - `eo_imaging_plan.json` - Earth observation imaging mission
 - `orbit_lowering_plan.json` - Orbit lowering maneuver sequence
+- `station_keeping_plan.json` - Station keeping operations
+- `anomaly_response_plan.json` - Anomaly response scenario
+- `constellation_contact_plan.json` - Multi-satellite contacts
+
+## Project Structure
+
+```
+sim/                # Core simulation library
+├── core/           # Data types and configuration
+├── models/         # Physical models (orbit, power, propulsion, etc.)
+├── activities/     # Activity handlers (9 types)
+├── runners/        # Execution engines (Basilisk)
+├── io/             # Aerie parser and client
+├── viz/            # CZML and visualization output
+└── engine.py       # Main simulate() function
+
+cli/                # Command-line interface
+viewer/             # SolidJS + CesiumJS web viewer
+sim_mcp/            # MCP server for AI integration
+validation/         # GMAT truth comparison and regression tests
+tests/              # Unit tests and ETE test suite
+examples/           # Sample plans and configurations
+runs/               # Simulation output directory
+```

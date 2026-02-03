@@ -12,15 +12,28 @@ Schedule-driven spacecraft mission simulation stack for LEO/VLEO constellations.
 # Install in development mode
 pip install -e .
 
+# Install with all dependencies
+pip install -e ".[dev,validation]"
+
 # Run tests
-pytest
+pytest                              # All unit tests
+pytest tests/ete/ -v                # ETE tests
+pytest tests/ete/ -m "ete_smoke"    # Smoke tests only
 
 # Run CLI
 simrun --help
+simrun run --plan examples/operational_day_plan.json
 
-# Example runs (when implemented)
-python examples/run_low.py
-python examples/run_med_basilisk.py
+# Start viewer
+cd viewer && npm run dev
+
+# Start MCP HTTP server
+python -m sim_mcp.http_server --port 8765
+
+# Aerie integration
+make aerie-up       # Start Aerie Docker stack
+make aerie-health   # Check health
+simrun aerie status # CLI status check
 ```
 
 ## Architecture
@@ -48,14 +61,38 @@ Key data structures:
 
 OrbitPropagator, AttitudeModel, ThrustModel, AtmosphereModel, AccessModel, LinkModel, PowerModel, StorageModel, ProcessingModel
 
-### Directory Structure (target)
+### Directory Structure
 
 ```
-sim/           # Library code - models and core simulation
-cli/           # CLI entrypoints (simrun)
-tests/         # Unit + integration tests
-examples/      # Demo plans, configs, example scripts
-docs/          # ARCHITECTURE.md and other documentation
+sim/               # Core simulation library
+├── core/          # Data types (types.py), config, time utilities
+├── models/        # Physical models (orbit, power, propulsion, atmosphere, etc.)
+├── activities/    # Activity handlers (9 types implemented)
+├── runners/       # Basilisk execution engine
+├── io/            # Aerie parser and GraphQL client
+├── viz/           # CZML generator, events formatter
+├── engine.py      # Main simulate() function
+└── cache.py       # Disk-based caching layer
+
+cli/               # CLI entrypoints (simrun)
+viewer/            # SolidJS + CesiumJS web visualization UI
+sim_mcp/           # MCP server for AI integration
+├── server.py      # Stdio-based MCP server
+├── http_server.py # HTTP bridge for testing
+└── tools/         # Simulation, Aerie, and viz tools
+
+validation/        # GMAT truth comparison and regression
+├── gmat/          # GMAT integration (cases, templates, parser)
+├── baselines/     # Reference truth data
+└── scenarios/     # Validation scenario definitions
+
+tests/             # Test suite
+├── ete/           # End-to-end tests (Playwright, GMAT comparison)
+└── sim_mcp/       # MCP server tests
+
+examples/          # Demo plans and configurations
+docs/              # Architecture and strategy documentation
+runs/              # Simulation output directory
 ```
 
 ### Run Output Structure

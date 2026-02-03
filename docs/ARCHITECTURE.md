@@ -27,17 +27,19 @@ simulate(plan, initial_state, fidelity, config) -> results
 - Parametric power/thermal models
 - Fast execution for what-if analysis
 
-### MEDIUM Fidelity (planned)
+### MEDIUM Fidelity
 - Basilisk numerical propagation
 - Simplified drag with cached indices
 - Rate-limited attitude control
 - Continuous EP thrust modeling
+- 60-second time step default
 
-### HIGH Fidelity (planned)
+### HIGH Fidelity
 - Basilisk high-fidelity propagation
-- Higher time resolution
-- Better atmosphere inputs
+- Higher time resolution (10-second steps)
+- Better atmosphere inputs (NRLMSISE-00)
 - EP constraints modeling
+- Full attitude dynamics
 
 ## Model Interfaces
 
@@ -77,36 +79,118 @@ class ActivityHandler(ABC):
    - Cross-track/along-track pointing constraints
    - GSD and data volume calculations
 
+3. **downlink**: Telemetry/data downlink
+   - Ground station contact scheduling
+   - Data rate vs elevation modeling
+   - S/X/Ka band link budgets
+   - MEDIUM fidelity variant with detailed link modeling
+
+4. **station_keeping**: Orbit maintenance
+   - Semi-major axis corrections
+   - Eccentricity management
+   - Propellant-optimized maneuvers
+
+5. **momentum_desat**: Momentum wheel desaturation
+   - Thruster-based momentum management
+   - Propellant consumption tracking
+
+6. **collision_avoidance**: Collision avoidance maneuvers
+   - Conjunction assessment response
+   - Delta-V budgeting
+
+7. **safe_mode**: Safe mode operations
+   - Power-safe configuration
+   - Attitude hold modes
+
+8. **idle**: No-operation periods
+   - Background power consumption
+   - Quiescent state modeling
+
+9. **charging**: Battery charging
+   - Solar panel pointing optimization
+   - SOC management
+
 ## Directory Structure
 
 ```
 sim/
-├── core/           # Core types and utilities
-│   ├── types.py    # Data structures
-│   ├── time_utils.py
-│   └── config.py
-├── models/         # Physical models
-│   ├── orbit.py    # SGP4 propagation
-│   ├── atmosphere.py
-│   ├── propulsion.py
-│   ├── power.py
-│   ├── imaging.py
-│   └── access.py
-├── activities/     # Activity handlers
-│   ├── base.py
-│   ├── orbit_lower.py
-│   └── eo_collect.py
-├── engine.py       # Main simulate() function
-└── cache.py        # Disk-based caching
+├── core/               # Core types and utilities
+│   ├── types.py        # Data structures (Fidelity, EventType, PlanInput, etc.)
+│   ├── config.py       # Configuration management
+│   ├── time_utils.py   # Time utilities
+│   └── manifest.py     # Run manifest tracking
+├── models/             # Physical models
+│   ├── propagator_base.py  # Abstract propagator interface
+│   ├── orbit.py            # SGP4 propagation (LOW)
+│   ├── basilisk_propagator.py  # Basilisk (MEDIUM/HIGH)
+│   ├── atmosphere.py       # Atmospheric drag
+│   ├── propulsion.py       # Electric propulsion
+│   ├── power.py            # Battery SOC and solar
+│   ├── storage.py          # Data storage
+│   ├── imaging.py          # EO sensor modeling
+│   ├── access.py           # Ground station visibility
+│   └── spacecraft_mode.py  # Operational modes
+├── activities/         # Activity handlers (9 types)
+│   ├── base.py         # Abstract handler interface
+│   ├── orbit_lower.py  # Orbit lowering
+│   ├── eo_collect.py   # Imaging collection
+│   ├── downlink.py     # Data downlink
+│   ├── station_keeping.py
+│   ├── momentum_desat.py
+│   ├── collision_avoidance.py
+│   └── safe_mode.py
+├── runners/            # Execution engines
+│   ├── basilisk_runner.py  # Basilisk propagation
+│   └── activity_mappers.py
+├── io/                 # Input/output
+│   ├── aerie_parser.py     # Aerie format parsing
+│   ├── aerie_client.py     # Aerie API client
+│   └── aerie_queries.py    # GraphQL queries
+├── viz/                # Visualization output
+│   ├── czml_generator.py   # CesiumJS CZML format
+│   ├── events_formatter.py
+│   ├── manifest_generator.py
+│   └── diff.py             # Run comparison
+├── engine.py           # Main simulate() function
+└── cache.py            # Disk-based caching
 
 cli/
-└── simrun.py       # CLI entrypoint
+└── simrun.py           # CLI with run, aerie, delta-v, viz commands
+
+viewer/                 # Web-based mission viewer
+├── src/
+│   ├── App.tsx         # Main SolidJS application
+│   ├── components/     # UI components
+│   ├── workspaces/     # Mission workspaces (5 views)
+│   ├── services/       # API clients
+│   └── stores/         # State management
+├── package.json        # Node.js dependencies
+└── vite.config.ts      # Vite build config
+
+sim_mcp/                # MCP server for AI integration
+├── server.py           # Stdio-based MCP server
+├── http_server.py      # HTTP bridge for testing
+└── tools/              # Tool implementations
+
+validation/             # GMAT truth comparison
+├── gmat/
+│   ├── case_registry.py    # Test case registry
+│   ├── baseline_manager.py # Baseline management
+│   ├── executor.py         # GMAT script execution
+│   └── cases/              # 18+ validation cases
+├── baselines/          # Reference truth data
+└── scenarios/          # Validation scenarios
 
 tests/
-├── test_orbit.py
-├── test_propulsion.py
-├── test_imaging.py
-└── test_integration.py
+├── test_aerie_parser.py
+├── test_storage.py
+├── test_viz.py
+└── ete/                # End-to-end tests
+    ├── test_smoke.py
+    ├── test_pipeline.py
+    ├── test_gmat_comparison.py
+    ├── test_viewer_validation.py
+    └── pages/          # Playwright page objects
 ```
 
 ## Run Output Structure
@@ -144,3 +228,59 @@ The simulation enforces:
 - Fixed inputs produce reproducible results
 - Seeded randomness only (e.g., Ka weather availability model)
 - Time axis standardized to UTC
+
+## Mission Viewer
+
+Web-based visualization using SolidJS and CesiumJS:
+
+### Workspaces
+1. **Mission Overview** - KPIs, alerts, timeline, 3D orbit view
+2. **Maneuver Planning** - Delta-V budgets, thrust arcs
+3. **VLEO Drag** - Atmospheric effects, altitude decay
+4. **Anomaly Response** - Constraint violations, safe mode
+5. **Payload Ops** - Imaging, downlink scheduling
+
+### Data Flow
+```
+Simulation Run → viz/ directory → Viewer loads via HTTP
+                 ├── orbit.czml      # 3D trajectory
+                 ├── events.json     # Timeline markers
+                 └── manifest.json   # Run metadata
+```
+
+## MCP Server Integration
+
+Model Context Protocol server for AI assistant integration:
+
+### Available Tools
+- `run_simulation` - Execute simulations with inline plans
+- `get_run_status` / `get_run_results` - Query run state
+- `list_runs` - List available simulation runs
+- `aerie_status` - Check Aerie service health
+- `create_plan` / `export_plan` - Aerie plan management
+- `generate_viz` - Create visualization artifacts
+- `compare_runs` - Diff two simulation runs
+
+### Servers
+- **stdio server** (`sim_mcp/server.py`) - For Claude Code integration
+- **HTTP server** (`sim_mcp/http_server.py`) - For testing and web integration
+
+## Validation Framework
+
+GMAT-based truth comparison for regression testing:
+
+### Test Cases (18+)
+- **R01-R11**: Orbital mechanics and maneuver accuracy
+- **N01-N03**: VLEO drag and atmospheric modeling
+- **Eclipse timing**: Shadow entry/exit validation
+
+### Tolerances
+- Position RMS: < 10 km
+- Velocity RMS: < 10 m/s
+- Altitude RMS: < 5 km
+- Eclipse timing: < 30 seconds
+
+### ETE Test Tiers
+- **Smoke** (`ete_smoke`): <60s, basic connectivity
+- **Tier A** (`ete_tier_a`): <5min, core functionality
+- **Tier B** (`ete_tier_b`): <30min, extended validation
