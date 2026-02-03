@@ -4,13 +4,27 @@
 
 import { Component, createSignal, onMount, Show } from 'solid-js';
 
+// Check if we're on the docs page
+const isDocsPage = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('page') === 'docs' || window.location.pathname === '/docs';
+};
+
 // Simple test first - delay loading the complex components
 const App: Component = () => {
   const [ready, setReady] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [showDocs, setShowDocs] = createSignal(isDocsPage());
 
   onMount(async () => {
     console.log('[App] Component mounted');
+
+    // If docs page, skip loading run data
+    if (showDocs()) {
+      console.log('[App] Loading docs page...');
+      setReady(true);
+      return;
+    }
 
     try {
       // Dynamically import the stores and services
@@ -100,38 +114,59 @@ const App: Component = () => {
       </Show>
 
       <Show when={ready() && !error()}>
-        <AppContent />
+        <AppContent showDocs={showDocs()} />
       </Show>
     </div>
   );
 };
 
 // Separate component for the actual app content
-const AppContent: Component = () => {
-  // Dynamically import AppShell when ready
+const AppContent: Component<{ showDocs: boolean }> = (props) => {
+  // Dynamically import AppShell or DocsPage when ready
   const [Shell, setShell] = createSignal<Component | null>(null);
+  const [Docs, setDocs] = createSignal<Component | null>(null);
 
   onMount(async () => {
     try {
-      console.log('[AppContent] Loading AppShell...');
-      const { AppShell } = await import('./components/shell/AppShell');
-      setShell(() => AppShell);
-      console.log('[AppContent] AppShell loaded');
+      if (props.showDocs) {
+        console.log('[AppContent] Loading DocsPage...');
+        const { DocsPage } = await import('./docs/DocsPage');
+        setDocs(() => DocsPage);
+        console.log('[AppContent] DocsPage loaded');
+      } else {
+        console.log('[AppContent] Loading AppShell...');
+        const { AppShell } = await import('./components/shell/AppShell');
+        setShell(() => AppShell);
+        console.log('[AppContent] AppShell loaded');
+      }
     } catch (err) {
-      console.error('[AppContent] Failed to load AppShell:', err);
+      console.error('[AppContent] Failed to load component:', err);
     }
   });
 
   return (
-    <Show
-      when={Shell()}
-      fallback={
-        <div style={{ padding: '40px', color: '#94A3B8', 'text-align': 'center' }}>
-          Loading UI components...
-        </div>
-      }
-    >
-      {(ShellComponent) => <ShellComponent />}
+    <Show when={props.showDocs} fallback={
+      <Show
+        when={Shell()}
+        fallback={
+          <div style={{ padding: '40px', color: '#94A3B8', 'text-align': 'center' }}>
+            Loading UI components...
+          </div>
+        }
+      >
+        {(ShellComponent) => <ShellComponent />}
+      </Show>
+    }>
+      <Show
+        when={Docs()}
+        fallback={
+          <div style={{ padding: '40px', color: '#94A3B8', 'text-align': 'center' }}>
+            Loading documentation...
+          </div>
+        }
+      >
+        {(DocsComponent) => <DocsComponent />}
+      </Show>
     </Show>
   );
 };

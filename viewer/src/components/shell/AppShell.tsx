@@ -57,6 +57,17 @@ export const AppShell: Component = () => {
 
         <div class="sidebar-footer">
           <ModeIndicator collapsed={sidebarCollapsed()} />
+          <a
+            href="?page=docs"
+            class="docs-link"
+            classList={{ collapsed: sidebarCollapsed() }}
+            title="Documentation"
+          >
+            <span class="docs-icon">📚</span>
+            <Show when={!sidebarCollapsed()}>
+              <span class="docs-text">Docs</span>
+            </Show>
+          </a>
           <button
             class="collapse-btn btn btn-ghost btn-icon"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed())}
@@ -135,6 +146,36 @@ export const AppShell: Component = () => {
           display: flex;
           flex-direction: column;
           gap: var(--space-2);
+        }
+
+        .docs-link {
+          display: flex;
+          align-items: center;
+          gap: var(--space-3);
+          padding: var(--space-2) var(--space-3);
+          color: var(--slate-400);
+          text-decoration: none;
+          border-radius: var(--radius-sm);
+          transition: all var(--transition-fast);
+          font-size: var(--text-sm);
+        }
+
+        .docs-link.collapsed {
+          justify-content: center;
+          padding: var(--space-2);
+        }
+
+        .docs-link:hover {
+          color: var(--electric-teal);
+          background: var(--slate-800);
+        }
+
+        .docs-icon {
+          font-size: 16px;
+        }
+
+        .docs-text {
+          white-space: nowrap;
         }
 
         .collapse-btn {
