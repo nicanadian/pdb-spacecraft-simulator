@@ -439,3 +439,417 @@ class ViewerPage:
 
         self.page.on("console", handle_console)
         return errors
+
+    # === Enhanced UI Verification Methods ===
+
+    def get_kpi_values(self) -> Dict[str, str]:
+        """
+        Get all KPI card values from Mission Overview.
+
+        Returns:
+            Dictionary mapping KPI labels to their values
+        """
+        kpis = {}
+        try:
+            cards = self.page.query_selector_all(".kpi-card")
+            for card in cards:
+                label_el = card.query_selector(".kpi-label")
+                value_el = card.query_selector(".kpi-value")
+                if label_el and value_el:
+                    label = label_el.inner_text().strip().lower()
+                    value = value_el.inner_text().strip()
+                    kpis[label] = value
+        except Exception:
+            pass
+        return kpis
+
+    def get_context_chips(self) -> Dict[str, str]:
+        """
+        Get header context chips (plan, fidelity, duration).
+
+        Returns:
+            Dictionary with plan_id, fidelity, duration
+        """
+        chips = {}
+        try:
+            elements = self.page.query_selector_all(".context-chips .chip")
+            # Order in HeaderBar: Plan ID, Fidelity, Duration
+            keys = ["plan_id", "fidelity", "duration"]
+            for key, el in zip(keys, elements):
+                chips[key] = el.inner_text().strip()
+        except Exception:
+            pass
+        return chips
+
+    def get_timeline_contacts(self) -> List[Dict]:
+        """
+        Get contact blocks from timeline visualization.
+
+        Returns:
+            List of contact dictionaries with station, position info
+        """
+        contacts = []
+        try:
+            blocks = self.page.query_selector_all(".contact-block")
+            for block in blocks:
+                contact = {
+                    "station": block.get_attribute("title") or "",
+                    "left_pct": self._get_style_percent(block, "left"),
+                    "width_pct": self._get_style_percent(block, "width"),
+                }
+                contacts.append(contact)
+        except Exception:
+            pass
+        return contacts
+
+    def _get_style_percent(self, element, prop: str) -> float:
+        """Extract percentage value from element style property."""
+        try:
+            value = element.evaluate(f"el => el.style.{prop}")
+            if value and "%" in value:
+                return float(value.replace("%", ""))
+        except Exception:
+            pass
+        return 0.0
+
+    def get_timeline_event_markers(self) -> List[Dict]:
+        """
+        Get event markers from timeline visualization.
+
+        Returns:
+            List of event dictionaries with severity, position
+        """
+        events = []
+        try:
+            markers = self.page.query_selector_all(".event-marker")
+            for marker in markers:
+                class_attr = marker.get_attribute("class") or ""
+                severity_classes = class_attr.split()
+                severity = next(
+                    (c for c in ["failure", "warning", "info"] if c in severity_classes),
+                    "info"
+                )
+                events.append({
+                    "severity": severity,
+                    "left_pct": self._get_style_percent(marker, "left"),
+                })
+        except Exception:
+            pass
+        return events
+
+    def get_alerts_by_severity(self, severity: str) -> List[Dict]:
+        """
+        Get alerts filtered by severity level.
+
+        Args:
+            severity: One of "failure", "warning", "info"
+
+        Returns:
+            List of alert dictionaries
+        """
+        alerts = []
+        try:
+            items = self.page.query_selector_all(
+                f".alert-summary-item.{severity}, .alert-card.{severity}"
+            )
+            for item in items:
+                title_el = item.query_selector(".alert-title, .item-title")
+                alerts.append({
+                    "title": title_el.inner_text() if title_el else "",
+                    "severity": severity,
+                })
+        except Exception:
+            pass
+        return alerts
+
+    def get_alert_thread_structure(self) -> List[Dict]:
+        """
+        Get alert thread structure with root causes and consequences.
+
+        Returns:
+            List of thread dictionaries with root and consequence info
+        """
+        threads = []
+        try:
+            thread_els = self.page.query_selector_all(".alert-thread")
+            for thread in thread_els:
+                root = thread.query_selector(".thread-root .alert-card")
+                consequences = thread.query_selector_all(".thread-consequences .alert-card")
+                root_title = None
+                if root:
+                    title_el = root.query_selector(".alert-title")
+                    root_title = title_el.inner_text() if title_el else None
+                threads.append({
+                    "root_title": root_title,
+                    "consequence_count": len(consequences),
+                })
+        except Exception:
+            pass
+        return threads
+
+    # === Playback Control Methods ===
+
+    def get_playback_state(self) -> Dict:
+        """
+        Get current playback state.
+
+        Returns:
+            Dictionary with is_playing, current_time, speed
+        """
+        state = {
+            "is_playing": False,
+            "current_time": "0:00 / 0:00",
+            "speed": "1",
+        }
+        try:
+            play_btn = self.page.query_selector(".play-button")
+            if play_btn:
+                class_attr = play_btn.get_attribute("class") or ""
+                state["is_playing"] = "playing" in class_attr
+
+            time_display = self.page.query_selector(".time-display")
+            if time_display:
+                state["current_time"] = time_display.inner_text()
+
+            speed_select = self.page.query_selector(".speed-control select")
+            if speed_select:
+                state["speed"] = speed_select.input_value()
+        except Exception:
+            pass
+        return state
+
+    def click_playback_control(self, control: str) -> None:
+        """
+        Click a playback control button.
+
+        Args:
+            control: One of "start", "back", "play", "forward", "end"
+        """
+        index_map = {"start": 0, "back": 1, "play": 2, "forward": 3, "end": 4}
+        if control == "play":
+            self.page.click(".play-button")
+        else:
+            btns = self.page.query_selector_all(".playback-controls button")
+            if len(btns) > index_map.get(control, 0):
+                btns[index_map[control]].click()
+
+    def set_playback_speed(self, speed: str) -> None:
+        """
+        Set playback speed.
+
+        Args:
+            speed: One of "1", "10", "60", "300", "1000"
+        """
+        try:
+            self.page.select_option(".speed-control select", speed)
+        except Exception:
+            pass
+
+    # === Cesium 3D Verification Methods ===
+
+    def get_cesium_entities(self) -> List[str]:
+        """
+        Get list of entity IDs in Cesium viewer.
+
+        Returns:
+            List of entity ID strings
+        """
+        try:
+            return self.page.evaluate("""() => {
+                if (!window.cesiumViewer) return [];
+                return window.cesiumViewer.entities.values.map(e => e.id);
+            }""") or []
+        except Exception:
+            return []
+
+    def select_cesium_entity(self, entity_id: str) -> bool:
+        """
+        Select an entity in the 3D viewer by ID.
+
+        Args:
+            entity_id: Entity ID to select
+
+        Returns:
+            True if entity was found and selected
+        """
+        try:
+            return self.page.evaluate(f"""() => {{
+                if (!window.cesiumViewer) return false;
+                const entity = window.cesiumViewer.entities.getById('{entity_id}');
+                if (!entity) return false;
+                window.cesiumViewer.selectedEntity = entity;
+                return true;
+            }}""")
+        except Exception:
+            return False
+
+    def get_telemetry_inspector_data(self) -> Optional[Dict]:
+        """
+        Get data from the telemetry inspector panel.
+
+        Returns:
+            Dictionary with inspector content or None if not visible
+        """
+        try:
+            inspector = self.page.query_selector(".inspector-wrapper")
+            if not inspector or not inspector.is_visible():
+                return None
+            return {
+                "visible": True,
+                "content": inspector.inner_text(),
+            }
+        except Exception:
+            return None
+
+    # === State Transition Helpers ===
+
+    def wait_for_data_loaded(self, timeout_ms: int = 10000) -> bool:
+        """
+        Wait for simulation data to be fully loaded.
+
+        Args:
+            timeout_ms: Maximum wait time
+
+        Returns:
+            True if data loaded successfully
+        """
+        try:
+            # Wait for KPI cards to have non-empty values
+            self.page.wait_for_function("""() => {
+                const values = document.querySelectorAll('.kpi-value');
+                return values.length >= 4 && Array.from(values).every(v => v.textContent.trim() !== '');
+            }""", timeout=timeout_ms)
+            return True
+        except Exception:
+            return False
+
+    def wait_for_alerts_loaded(self, timeout_ms: int = 5000) -> bool:
+        """
+        Wait for alerts to be loaded and rendered.
+
+        Args:
+            timeout_ms: Maximum wait time
+
+        Returns:
+            True if alerts loaded
+        """
+        try:
+            self.page.wait_for_function("""() => {
+                return document.querySelector('.alert-summary-item') !== null ||
+                       document.querySelector('.no-alerts') !== null;
+            }""", timeout=timeout_ms)
+            return True
+        except Exception:
+            return False
+
+    def wait_for_timeline_populated(self, timeout_ms: int = 5000) -> bool:
+        """
+        Wait for timeline lanes to have content.
+
+        Args:
+            timeout_ms: Maximum wait time
+
+        Returns:
+            True if timeline has content
+        """
+        try:
+            self.page.wait_for_function("""() => {
+                return document.querySelectorAll('.contact-block, .event-marker').length > 0;
+            }""", timeout=timeout_ms)
+            return True
+        except Exception:
+            return False
+
+    def wait_for_workspace_transition(
+        self, target_workspace: str, timeout_ms: int = 3000
+    ) -> bool:
+        """
+        Wait for workspace transition to complete.
+
+        Args:
+            target_workspace: Target workspace ID
+            timeout_ms: Maximum wait time
+
+        Returns:
+            True if transition completed
+        """
+        workspace_indices = {
+            "mission-overview": 0,
+            "maneuver-planning": 1,
+            "vleo-drag": 2,
+            "anomaly-response": 3,
+            "payload-ops": 4,
+        }
+        target_idx = workspace_indices.get(target_workspace, 0)
+
+        try:
+            self.page.wait_for_function(f"""() => {{
+                const active = document.querySelector('.workspace-item.active');
+                if (!active) return false;
+                const items = Array.from(document.querySelectorAll('.workspace-item'));
+                return items.indexOf(active) === {target_idx};
+            }}""", timeout=timeout_ms)
+            self.page.wait_for_load_state("networkidle", timeout=timeout_ms)
+            return True
+        except Exception:
+            return False
+
+    # === Artifact Capture Methods ===
+
+    def capture_failure_artifacts(self, test_name: str, output_dir) -> Dict[str, str]:
+        """
+        Capture diagnostic artifacts on test failure.
+
+        Args:
+            test_name: Name of the failing test
+            output_dir: Directory to save artifacts (Path object)
+
+        Returns:
+            Dictionary mapping artifact names to file paths
+        """
+        import json
+        from pathlib import Path
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        artifacts = {}
+
+        try:
+            # Screenshot
+            screenshot_path = output_dir / f"{test_name}_screenshot.png"
+            self.page.screenshot(path=str(screenshot_path), full_page=True)
+            artifacts["screenshot"] = str(screenshot_path)
+        except Exception:
+            pass
+
+        try:
+            # DOM snapshot of key elements
+            dom_path = output_dir / f"{test_name}_dom.json"
+            dom_content = self.page.evaluate("""() => {
+                return {
+                    kpis: document.querySelector('.kpi-grid')?.outerHTML || null,
+                    alerts: document.querySelector('.alerts-summary')?.outerHTML || null,
+                    timeline: document.querySelector('.timeline-panel')?.outerHTML || null,
+                    header: document.querySelector('.header-bar')?.outerHTML || null,
+                };
+            }""")
+            with open(dom_path, "w") as f:
+                json.dump(dom_content, f, indent=2)
+            artifacts["dom_snapshot"] = str(dom_path)
+        except Exception:
+            pass
+
+        try:
+            # Page URL and title
+            meta_path = output_dir / f"{test_name}_meta.json"
+            meta = {
+                "url": self.page.url,
+                "title": self.page.title(),
+            }
+            with open(meta_path, "w") as f:
+                json.dump(meta, f, indent=2)
+            artifacts["meta"] = str(meta_path)
+        except Exception:
+            pass
+
+        return artifacts
