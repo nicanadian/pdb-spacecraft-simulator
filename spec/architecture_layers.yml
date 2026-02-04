@@ -1,0 +1,227 @@
+meta_model_version: "uaf-lite-0.1"
+
+enterprise:
+  id: "L0:pdb_constellation"
+  name: "PDB Constellation Mission Simulation"
+  description: "Schedule-driven spacecraft simulation for LEO/VLEO constellations"
+  external_actors:
+    - id: "L0:aerie"
+      name: "Aerie/PLANDEV"
+      arch_type: ExternalSystem
+      description: "Mission planning system - GraphQL API for plans, schedules, activities"
+      interface_type: graphql
+    - id: "L0:operator"
+      name: "Mission Operator"
+      arch_type: ExternalActor
+      description: "User running simulations via CLI or MCP"
+      interface_type: cli
+
+segments:
+  - id: "L1:simulation_engine"
+    name: "Simulation Engine"
+    color: "#ef4444"
+    description: "Core orchestration: fidelity selection, propagator dispatch, state management, caching"
+  - id: "L1:physical_models"
+    name: "Physical Models"
+    color: "#06b6d4"
+    description: "Swappable physics models: orbit propagation (SGP4/Basilisk), power, propulsion, atmosphere, access, storage, imaging"
+  - id: "L1:activity_framework"
+    name: "Activity Framework"
+    color: "#22c55e"
+    description: "Activity handler registry and 8 mission operation handlers (downlink, imaging, orbit lowering, etc.)"
+  - id: "L1:data_pipeline"
+    name: "Data Pipeline"
+    color: "#f59e0b"
+    description: "Aerie GraphQL ingestion, plan parsing, output serialization"
+  - id: "L1:visualization"
+    name: "Visualization"
+    color: "#ec4899"
+    description: "CZML generation, event formatting, CesiumJS web viewer"
+  - id: "L1:user_interfaces"
+    name: "User Interfaces"
+    color: "#6366f1"
+    description: "CLI (simrun), MCP server for AI integration"
+
+domains:
+  # Simulation Engine domains
+  - { id: "L2:sim_engine.orchestration", segment: "L1:simulation_engine", domain: Operational }
+  - { id: "L2:sim_engine.state",        segment: "L1:simulation_engine", domain: Information }
+  - { id: "L2:sim_engine.execution",    segment: "L1:simulation_engine", domain: Technical }
+  - { id: "L2:sim_engine.caching",      segment: "L1:simulation_engine", domain: Technical }
+  # Physical Models domains - split by subsystem
+  - { id: "L2:phys.orbit",       segment: "L1:physical_models", domain: Logical }
+  - { id: "L2:phys.environment", segment: "L1:physical_models", domain: Logical }
+  - { id: "L2:phys.subsystems",  segment: "L1:physical_models", domain: Logical }
+  # Activity Framework domains
+  - { id: "L2:act.framework",   segment: "L1:activity_framework", domain: Logical }
+  - { id: "L2:act.operations",  segment: "L1:activity_framework", domain: Operational }
+  # Data Pipeline domains
+  - { id: "L2:data.ingestion",  segment: "L1:data_pipeline", domain: Information }
+  - { id: "L2:data.output",     segment: "L1:data_pipeline", domain: Information }
+  # Visualization domains
+  - { id: "L2:viz.generation",  segment: "L1:visualization",  domain: Logical }
+  - { id: "L2:viz.web_viewer",  segment: "L1:visualization",  domain: Technical }
+  # User Interfaces domains
+  - { id: "L2:ui.cli",          segment: "L1:user_interfaces", domain: Technical }
+  - { id: "L2:ui.mcp",          segment: "L1:user_interfaces", domain: Technical }
+
+# Maps module_path prefixes -> L2 domain IDs (first match wins, most specific first)
+code_mapping:
+  - { prefix: "sim.engine",                  domain: "L2:sim_engine.orchestration", elevate: true }
+  - { prefix: "sim.core.types",              domain: "L2:sim_engine.state",         elevate: true }
+  - { prefix: "sim.core.manifest",           domain: "L2:sim_engine.state" }
+  - { prefix: "sim.core",                    domain: "L2:sim_engine.state" }
+  - { prefix: "sim.runners",                 domain: "L2:sim_engine.execution" }
+  - { prefix: "sim.cache",                   domain: "L2:sim_engine.caching" }
+  # Orbit propagation models
+  - { prefix: "sim.models.orbit",            domain: "L2:phys.orbit",        elevate: true }
+  - { prefix: "sim.models.propagator_base",  domain: "L2:phys.orbit",        elevate: true }
+  - { prefix: "sim.models.basilisk",         domain: "L2:phys.orbit",        elevate: true }
+  # Environment models
+  - { prefix: "sim.models.atmosphere",       domain: "L2:phys.environment" }
+  - { prefix: "sim.models.access",           domain: "L2:phys.environment",  elevate: true }
+  - { prefix: "sim.models.imaging",          domain: "L2:phys.environment" }
+  # Subsystem models
+  - { prefix: "sim.models.power",            domain: "L2:phys.subsystems",   elevate: true }
+  - { prefix: "sim.models.propulsion",       domain: "L2:phys.subsystems",   elevate: true }
+  - { prefix: "sim.models.storage",          domain: "L2:phys.subsystems",   elevate: true }
+  - { prefix: "sim.models.spacecraft_mode",  domain: "L2:phys.subsystems" }
+  - { prefix: "sim.models",                  domain: "L2:phys.subsystems" }
+  # Activity framework
+  - { prefix: "sim.activities.base",         domain: "L2:act.framework",     elevate: true }
+  - { prefix: "sim.activities",              domain: "L2:act.operations" }
+  # Data pipeline
+  - { prefix: "sim.io",                      domain: "L2:data.ingestion" }
+  # Visualization
+  - { prefix: "sim.viz",                     domain: "L2:viz.generation" }
+  # User interfaces
+  - { prefix: "cli",                         domain: "L2:ui.cli" }
+  - { prefix: "sim_mcp",                     domain: "L2:ui.mcp" }
+
+elevation:
+  force_elevate:
+    - "sim.engine.simulate"
+    - "sim.core.types.SimConfig"
+    - "sim.core.types.SimResults"
+    - "sim.core.types.PlanInput"
+    - "sim.core.types.InitialState"
+    - "sim.core.types.Fidelity"
+    - "sim.activities.base.ActivityHandler"
+    - "sim.models.propagator_base.PropagatorInterface"
+    - "sim.models.orbit.OrbitPropagator"
+    - "sim.models.basilisk_propagator.BasiliskPropagator"
+    - "sim.models.power.PowerModel"
+    - "sim.models.power.MediumFidelityPowerModel"
+    - "sim.models.propulsion.EPModel"
+    - "sim.models.storage.SSRModel"
+    - "sim.models.access.AccessModel"
+    - "sim.models.access.GroundStation"
+    - "sim.models.atmosphere.AtmosphereModel"
+    - "sim.models.imaging.FrameSensor"
+  suppress_kinds: ["module"]
+  suppress_name_patterns: ["__init__", "_helper", "_internal"]
+  min_complexity: 2
+
+requirements:
+  - id: "REQ-N-001"
+    title: "Deterministic Simulation"
+    req_type: Need
+    level: L0
+    description: "Fixed inputs produce reproducible results; seeded randomness only"
+    children: ["REQ-CA-001"]
+  - id: "REQ-N-002"
+    title: "Multi-Fidelity Execution"
+    req_type: Need
+    level: L0
+    description: "Support LOW (SGP4), MEDIUM (Basilisk J2), HIGH (Basilisk full) fidelity modes"
+    children: ["REQ-CR-001", "REQ-CR-002"]
+  - id: "REQ-CA-001"
+    title: "Config-Hash Cache Keys"
+    req_type: ArchitectureConstraint
+    level: L1
+    parent: "REQ-N-001"
+    allocated_to: ["L1:simulation_engine"]
+  - id: "REQ-CR-001"
+    title: "SGP4/TLE Propagation (LOW fidelity)"
+    req_type: CapabilityRequirement
+    level: L1
+    parent: "REQ-N-002"
+    description: "OrbitPropagator uses SGP4 with TLE-based propagation for fast what-if analysis"
+    allocated_to: ["L2:phys.orbit"]
+  - id: "REQ-CR-002"
+    title: "Basilisk Numerical Propagation (MEDIUM/HIGH fidelity)"
+    req_type: CapabilityRequirement
+    level: L1
+    parent: "REQ-N-002"
+    description: "BasiliskPropagator with J2 perturbations (MEDIUM) or full force model with EGM96, NRLMSISE00, SRP, third-body (HIGH)"
+    allocated_to: ["L2:phys.orbit", "L2:sim_engine.execution"]
+  - id: "REQ-N-003"
+    title: "Swappable Model Interfaces"
+    req_type: Need
+    level: L0
+    description: "Physical models implement abstract interfaces for propagation, power, propulsion, etc."
+    allocated_to: ["L1:physical_models"]
+  - id: "REQ-IC-001"
+    title: "SOC in [0,1]"
+    req_type: InterfaceContract
+    level: L2
+    description: "Battery state of charge must remain within [0, 1]"
+    allocated_to: ["L2:phys.subsystems"]
+  - id: "REQ-IC-002"
+    title: "Storage Non-Negative"
+    req_type: InterfaceContract
+    level: L2
+    description: "SSR storage volume must never go negative"
+    allocated_to: ["L2:phys.subsystems"]
+  - id: "REQ-IC-003"
+    title: "Monotonic Time Axis"
+    req_type: InterfaceContract
+    level: L2
+    description: "Simulation time axis must be strictly monotonically increasing"
+    allocated_to: ["L2:sim_engine.orchestration"]
+  - id: "REQ-IC-004"
+    title: "AOS < LOS for All Passes"
+    req_type: InterfaceContract
+    level: L2
+    description: "Acquisition of signal must precede loss of signal in all access windows"
+    allocated_to: ["L2:phys.environment"]
+  - id: "REQ-IC-005"
+    title: "Propellant Non-Negative"
+    req_type: InterfaceContract
+    level: L2
+    description: "Propellant mass must never go negative"
+    allocated_to: ["L2:phys.subsystems"]
+  - id: "REQ-QA-001"
+    title: "Eclipse Implies Generation=0 (LOW)"
+    req_type: QualityAttribute
+    level: L2
+    description: "In LOW fidelity, eclipse periods must have zero power generation"
+    allocated_to: ["L2:phys.subsystems"]
+
+viewpoints:
+  - id: operational-context
+    name: "Operational Context"
+    include_layers: [L0, L2]
+    domain: Operational
+    default_collapse: [Segment, Subsystem]
+  - id: capability-map
+    name: "Capability Map"
+    include_layers: [L1]
+  - id: logical-architecture
+    name: "Logical Architecture"
+    include_layers: [L1, L2, L3]
+    domain: Logical
+    connector_types: [calls, publishes, subscribes, reads, writes]
+    default_collapse: [Subsystem]
+  - id: interface-contracts
+    name: "Interface Contracts"
+    include_layers: [L2, L3]
+    domain: Interface
+  - id: technical-deployment
+    name: "Technical Deployment"
+    include_layers: [L2, L3, L4]
+    domain: Technical
+  - id: requirements-decomposition
+    name: "Requirements"
+    include_layers: [L1, L2, L3]
+    overlays: [allocations, coverage]

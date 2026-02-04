@@ -9,9 +9,9 @@ from pathlib import Path
 
 import click
 
-from tools.modelgen.config import load_config
+from tools.modelgen.config import load_architecture_config, load_config
 from tools.modelgen.ir.builder import IRBuilder
-from tools.modelgen.ir.serializer import serialize_graph
+from tools.modelgen.ir.serializer import serialize_arch_model, serialize_graph
 from tools.modelgen.overrides.loader import apply_overrides, load_overrides
 from tools.modelgen.overrides.validator import validate_overrides
 from tools.modelgen.generators.json_export import export_json
@@ -52,7 +52,13 @@ def modelgen(verbose: bool, json_logs: bool):
     default="build/modelgen/ir.json",
     help="Output path for IR JSON.",
 )
-def extract(root: Path, mappings: Path, output: Path):
+@click.option(
+    "--architecture",
+    type=click.Path(path_type=Path),
+    default="spec/architecture_layers.yml",
+    help="Path to architecture_layers.yml for v2 output.",
+)
+def extract(root: Path, mappings: Path, output: Path, architecture: Path):
     """Extract architecture from source code into IR JSON."""
     log = get_logger("cli")
     root = root.resolve()
@@ -76,7 +82,27 @@ def extract(root: Path, mappings: Path, output: Path):
     # Write output
     output_path = root / output if not output.is_absolute() else output
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    json_str = serialize_graph(graph)
+
+    # Try v2 architecture output
+    arch_path = root / architecture if not architecture.is_absolute() else architecture
+    arch_config = load_architecture_config(arch_path)
+
+    if arch_config:
+        from tools.modelgen.ir.architecture_builder import ArchitectureBuilder
+
+        click.echo(f"Building architecture model from {arch_path}")
+        arch_builder = ArchitectureBuilder(graph, arch_config)
+        arch_model = arch_builder.build()
+        json_str = serialize_arch_model(arch_model)
+        click.echo(
+            f"Architecture: {len(arch_model.arch_nodes)} arch nodes, "
+            f"{len(arch_model.arch_edges)} arch edges, "
+            f"{len(arch_model.requirements)} requirements"
+        )
+    else:
+        click.echo("No architecture_layers.yml found, producing v1 output")
+        json_str = serialize_graph(graph)
+
     output_path.write_text(json_str, encoding="utf-8")
     click.echo(f"Written: {output_path}")
 

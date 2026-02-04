@@ -79,3 +79,99 @@ export interface LayoutNode extends ModelNode {
   fx?: number | null;
   fy?: number | null;
 }
+
+// ---------------------------------------------------------------------------
+// UAF-lite v2 architecture types
+// ---------------------------------------------------------------------------
+
+export type ArchLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
+
+export type ViewId =
+  | 'operational-context'
+  | 'capability-map'
+  | 'logical-architecture'
+  | 'interface-contracts'
+  | 'technical-deployment'
+  | 'requirements-decomposition';
+
+export interface ArchNode {
+  id: string;
+  name: string;
+  level: ArchLevel;
+  arch_type: string;
+  parent_id: string;
+  domain: string;
+  description: string;
+  ir_node_ref: string;
+  children: string[];
+  tags: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface ArchEdge {
+  id: string;
+  source: string;
+  target: string;
+  relation: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface Requirement {
+  id: string;
+  title: string;
+  req_type: string;
+  level: string;
+  description: string;
+  parent_id: string;
+  children: string[];
+  source: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface RequirementLink {
+  id: string;
+  requirement_id: string;
+  target_id: string;
+  relation: string;
+}
+
+export interface ViewpointDef {
+  id: ViewId;
+  name: string;
+  include_layers: ArchLevel[];
+  domain: string;
+  connector_types: string[];
+  default_collapse: string[];
+  overlays: string[];
+}
+
+export interface ArchModelGraph {
+  schema_version: string;
+  meta_model_version: string;
+  metadata: Record<string, unknown>;
+  architecture: {
+    nodes: ArchNode[];
+    edges: ArchEdge[];
+  };
+  requirements: {
+    items: Requirement[];
+    links: RequirementLink[];
+  };
+  viewpoints: ViewpointDef[];
+  ir_graph: ModelGraph;
+}
+
+export interface TreeLayoutNode {
+  id: string;
+  label: string;
+  level: ArchLevel;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  children: TreeLayoutNode[];
+  collapsed: boolean;
+  color: string;
+  parentId: string | null;
+  archNode?: ArchNode;
+}

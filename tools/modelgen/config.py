@@ -1,4 +1,4 @@
-"""Load and process mappings.yml configuration."""
+"""Load and process mappings.yml and architecture_layers.yml configuration."""
 
 from __future__ import annotations
 
@@ -24,6 +24,24 @@ def load_config(mappings_path: Path) -> dict[str, Any]:
         data = yaml.safe_load(f)
 
     return data or _default_config()
+
+
+def load_architecture_config(path: Path) -> dict[str, Any] | None:
+    """Load architecture_layers.yml configuration.
+
+    Args:
+        path: Path to architecture_layers.yml.
+
+    Returns:
+        Parsed configuration dict, or None if file doesn't exist.
+    """
+    if not path.exists():
+        return None
+
+    with open(path) as f:
+        data = yaml.safe_load(f)
+
+    return data
 
 
 def _default_config() -> dict[str, Any]:

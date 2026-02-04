@@ -1,24 +1,36 @@
-import { createEffect, Show, Switch, Match, onMount } from 'solid-js';
+import { Show, Switch, Match, onMount } from 'solid-js';
 import {
   graph, setGraph,
   loading, setLoading,
   error, setError,
   activeView, setActiveView,
+  activeViewpoint,
   selectedNode,
+  hasArchModel,
+  archModel,
 } from './stores/modelStore';
-import { loadModelGraph } from './services/dataLoader';
+import { loadModelData } from './services/dataLoader';
 import SearchBar from './components/SearchBar';
 import FilterPanel from './components/FilterPanel';
 import NodeDetail from './components/NodeDetail';
+import ViewpointSelector from './components/ViewpointSelector';
+import HierarchyNav from './components/HierarchyNav';
+import LevelSelector from './components/LevelSelector';
+import RequirementOverlayToggle from './components/RequirementOverlayToggle';
 import ArchitectureView from './views/ArchitectureView';
+import OperationalContextView from './views/OperationalContextView';
+import CapabilityMapView from './views/CapabilityMapView';
+import LogicalArchitectureView from './views/LogicalArchitectureView';
+import InterfaceContractsView from './views/InterfaceContractsView';
+import TechnicalDeploymentView from './views/TechnicalDeploymentView';
+import RequirementsView from './views/RequirementsView';
 import GuaranteesView from './views/GuaranteesView';
 import ImpactView from './views/ImpactView';
 
 export default function App() {
   onMount(async () => {
     try {
-      const data = await loadModelGraph();
-      setGraph(data);
+      await loadModelData();
       setLoading(false);
     } catch (err: any) {
       setError(err.message ?? 'Failed to load model');
@@ -26,34 +38,62 @@ export default function App() {
     }
   });
 
+  const gitSha = () => {
+    const model = archModel();
+    if (model?.metadata?.git_sha) return String(model.metadata.git_sha);
+    const g = graph();
+    if (g?.metadata?.git_sha) return String(g.metadata.git_sha);
+    return null;
+  };
+
+  const nodeCount = () => {
+    const model = archModel();
+    if (model) return model.architecture.nodes.length;
+    return graph()?.nodes.length ?? 0;
+  };
+
+  const edgeCount = () => {
+    const model = archModel();
+    if (model) return model.architecture.edges.length;
+    return graph()?.edges.length ?? 0;
+  };
+
   return (
     <div style={{ display: 'flex', 'flex-direction': 'column', height: '100vh', background: '#0f172a' }}>
       {/* Header */}
       <header style={{
-        height: '48px',
+        height: '56px',
         background: '#1e293b',
         'border-bottom': '1px solid #334155',
         display: 'flex',
         'align-items': 'center',
         padding: '0 16px',
-        gap: '16px',
+        gap: '12px',
         'flex-shrink': '0',
       }}>
-        <span style={{ 'font-size': '14px', 'font-weight': '600', color: '#f1f5f9' }}>
-          Architecture Viewer
+        <span style={{ 'font-size': '14px', 'font-weight': '600', color: '#f1f5f9', 'white-space': 'nowrap' }}>
+          Architecture Browser
         </span>
-        <Show when={graph()}>
-          <span style={{ 'font-size': '12px', color: '#64748b' }}>
-            {graph()!.nodes.length} nodes &middot; {graph()!.edges.length} edges
+        <Show when={!loading() && !error()}>
+          <span style={{ 'font-size': '12px', color: '#64748b', 'white-space': 'nowrap' }}>
+            {nodeCount()} nodes &middot; {edgeCount()} edges
           </span>
         </Show>
         <div style={{ flex: '1' }} />
-        <NavTab label="Architecture" view="architecture" />
-        <NavTab label="Guarantees" view="guarantees" />
-        <NavTab label="Impact" view="impact" />
-        <Show when={graph()?.metadata?.git_sha}>
+        <Show when={hasArchModel()}>
+          <ViewpointSelector />
+          <LevelSelector />
+          <RequirementOverlayToggle />
+        </Show>
+        {/* Fallback tabs for v1 */}
+        <Show when={!hasArchModel() && !loading()}>
+          <NavTab label="Architecture" view="architecture" />
+          <NavTab label="Guarantees" view="guarantees" />
+          <NavTab label="Impact" view="impact" />
+        </Show>
+        <Show when={gitSha()}>
           <span style={{ 'font-size': '11px', color: '#475569', 'font-family': 'monospace' }}>
-            {String(graph()!.metadata.git_sha)}
+            {gitSha()}
           </span>
         </Show>
       </header>
@@ -70,10 +110,10 @@ export default function App() {
             Error: {error()}
           </div>
         </Show>
-        <Show when={!loading() && !error() && graph()}>
-          {/* Sidebar */}
+        <Show when={!loading() && !error()}>
+          {/* Left Sidebar */}
           <div style={{
-            width: '220px',
+            width: '280px',
             background: '#1e293b',
             'border-right': '1px solid #334155',
             display: 'flex',
@@ -84,26 +124,52 @@ export default function App() {
             'flex-shrink': '0',
           }}>
             <SearchBar />
+            <Show when={hasArchModel()}>
+              <HierarchyNav />
+            </Show>
             <FilterPanel />
           </div>
 
-          {/* Main content */}
+          {/* Main Content */}
           <div style={{ flex: '1', overflow: 'hidden' }}>
-            <Switch>
-              <Match when={activeView() === 'architecture'}>
-                <ArchitectureView />
-              </Match>
-              <Match when={activeView() === 'guarantees'}>
-                <GuaranteesView />
-              </Match>
-              <Match when={activeView() === 'impact'}>
-                <ImpactView />
-              </Match>
-            </Switch>
+            <Show when={hasArchModel()} fallback={
+              <Switch>
+                <Match when={activeView() === 'architecture'}>
+                  <ArchitectureView />
+                </Match>
+                <Match when={activeView() === 'guarantees'}>
+                  <GuaranteesView />
+                </Match>
+                <Match when={activeView() === 'impact'}>
+                  <ImpactView />
+                </Match>
+              </Switch>
+            }>
+              <Switch>
+                <Match when={activeViewpoint() === 'operational-context'}>
+                  <OperationalContextView />
+                </Match>
+                <Match when={activeViewpoint() === 'capability-map'}>
+                  <CapabilityMapView />
+                </Match>
+                <Match when={activeViewpoint() === 'logical-architecture'}>
+                  <LogicalArchitectureView />
+                </Match>
+                <Match when={activeViewpoint() === 'interface-contracts'}>
+                  <InterfaceContractsView />
+                </Match>
+                <Match when={activeViewpoint() === 'technical-deployment'}>
+                  <TechnicalDeploymentView />
+                </Match>
+                <Match when={activeViewpoint() === 'requirements-decomposition'}>
+                  <RequirementsView />
+                </Match>
+              </Switch>
+            </Show>
           </div>
 
-          {/* Node detail panel */}
-          <Show when={activeView() === 'architecture' && selectedNode()}>
+          {/* Right Sidebar (conditional) */}
+          <Show when={selectedNode()}>
             <NodeDetail />
           </Show>
         </Show>
