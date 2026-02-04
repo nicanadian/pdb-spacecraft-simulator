@@ -68,13 +68,18 @@ e2e = [
     "pytest-playwright>=0.4.0",
     "requests>=2.28.0",
 ]
+modelgen = [
+    "click>=8.1.0",
+    "pyyaml>=6.0",
+]
 
 [project.scripts]
 simrun = "cli.simrun:main"
 mcp-server = "sim_mcp.server:main"
+modelgen = "tools.modelgen.cli:modelgen"
 
 [tool.setuptools.packages.find]
-include = ["sim*", "cli*", "sim_mcp*"]
+include = ["sim*", "cli*", "sim_mcp*", "tools*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

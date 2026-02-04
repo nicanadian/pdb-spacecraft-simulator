@@ -3,7 +3,15 @@
 
 .PHONY: help install install-dev aerie-setup aerie-up aerie-down aerie-status aerie-health \
         plan schedule export test test-cov test-ete test-ete-smoke test-e2e \
-        viewer viewer-build mcp-server lint format clean
+        viewer viewer-build mcp-server lint format clean \
+        dev e2e modelgen modelgen-extract modelgen-build modelgen-check modelgen-serve \
+        modelgen-viewer-build modelgen-e2e golden-demo schema-snapshot schema-check
+
+# Detect Python 3.10+ (prefer homebrew python3.11 if system python is 3.9)
+PYTHON ?= $(shell python3 -c "import sys; print('python3' if sys.version_info >= (3,10) else '')" 2>/dev/null || echo "")
+ifeq ($(PYTHON),)
+PYTHON := $(shell which python3.11 2>/dev/null || which python3.12 2>/dev/null || echo python3)
+endif
 
 # Default target
 help:
@@ -41,6 +49,24 @@ help:
 	@echo "  lint            Run linters (ruff)"
 	@echo "  format          Format code (black)"
 	@echo "  clean           Remove build artifacts and caches"
+	@echo ""
+	@echo "Quick Start:"
+	@echo "  dev             One-command bootstrap (install + build + extract)"
+	@echo "  e2e             Full E2E: extract + build + viewer build + serve + Playwright tests"
+	@echo ""
+	@echo "Modelgen:"
+	@echo "  modelgen            Full pipeline: extract + build + viewer build"
+	@echo "  modelgen-extract    Extract architecture IR from source"
+	@echo "  modelgen-build      Apply overrides and produce model.json"
+	@echo "  modelgen-check      Validate overrides for staleness"
+	@echo "  modelgen-serve      Serve architecture viewer (port 8090)"
+	@echo "  modelgen-viewer-build  Build the modelui SolidJS viewer"
+	@echo "  modelgen-e2e        Run modelgen Playwright tests"
+	@echo ""
+	@echo "Demos & CI:"
+	@echo "  golden-demo     Run golden demo scenario (seed data + verify)"
+	@echo "  schema-snapshot Generate IR JSON schema snapshot for drift detection"
+	@echo "  schema-check    Check IR schema for drift against snapshot"
 
 # ============================================================================
 # Setup & Installation
@@ -199,6 +225,95 @@ mcp-server:
 	python -m sim_mcp.http_server --port 8765
 
 aerie-health: aerie-status
+
+# ============================================================================
+# Quick Start / Bootstrap
+# ============================================================================
+
+dev: install-dev modelgen
+	@echo ""
+	@echo "Development environment ready."
+	@echo "  Run 'make test' to run tests"
+	@echo "  Run 'make modelgen-serve' to view architecture"
+	@echo "  Run 'make e2e' to run full E2E validation"
+
+e2e: modelgen modelgen-e2e
+	@echo "Full E2E validation passed."
+
+# ============================================================================
+# Modelgen - Architecture Model Generator
+# ============================================================================
+
+modelgen: modelgen-extract modelgen-build modelgen-viewer-build
+	@echo "Modelgen pipeline complete."
+	@echo "  model.json: build/modelgen/model.json"
+	@echo "  viewer:     tools/modelui/dist/"
+	@echo "  Run 'make modelgen-serve' to view"
+
+modelgen-extract:
+	@echo "Extracting architecture from source..."
+	$(PYTHON) -m tools.modelgen.cli extract \
+		--root . --mappings spec/mappings.yml \
+		-o build/modelgen/ir.json
+
+modelgen-build: build/modelgen/ir.json
+	@echo "Building model.json with overrides..."
+	$(PYTHON) -m tools.modelgen.cli build \
+		--ir build/modelgen/ir.json \
+		--overrides spec/overrides.yml \
+		-o build/modelgen/
+
+modelgen-check: build/modelgen/ir.json
+	$(PYTHON) -m tools.modelgen.cli check \
+		--ir build/modelgen/ir.json \
+		--overrides spec/overrides.yml
+
+modelgen-viewer-build:
+	@echo "Building modelui viewer..."
+	cd tools/modelui && npm install --silent && npx vite build
+	cp build/modelgen/model.json tools/modelui/dist/model.json
+
+modelgen-serve: tools/modelui/dist/model.json
+	$(PYTHON) -m tools.modelgen.cli serve \
+		--dir tools/modelui/dist --port 8090
+
+modelgen-e2e: tools/modelui/dist/model.json
+	@echo "Running modelgen unit + E2E tests..."
+	$(PYTHON) -m pytest tests/tools/test_modelgen/ -v
+
+tools/modelui/dist/model.json: build/modelgen/model.json
+	@mkdir -p tools/modelui/dist
+	cp build/modelgen/model.json tools/modelui/dist/model.json
+
+build/modelgen/ir.json:
+	@$(MAKE) modelgen-extract
+
+build/modelgen/model.json: build/modelgen/ir.json
+	@$(MAKE) modelgen-build
+
+# ============================================================================
+# Golden Demo Scenarios
+# ============================================================================
+
+golden-demo:
+	@echo "Running golden demo scenario..."
+	$(PYTHON) scripts/golden_demo.py
+	@echo "Golden demo passed."
+
+# ============================================================================
+# Interface Schema Drift Detection
+# ============================================================================
+
+SCHEMA_SNAPSHOT := spec/ir_schema_snapshot.json
+
+schema-snapshot: build/modelgen/ir.json
+	@echo "Generating IR schema snapshot..."
+	$(PYTHON) scripts/schema_snapshot.py --ir build/modelgen/ir.json --output $(SCHEMA_SNAPSHOT)
+	@echo "Snapshot written to $(SCHEMA_SNAPSHOT)"
+
+schema-check: build/modelgen/ir.json
+	@echo "Checking IR schema for drift..."
+	$(PYTHON) scripts/schema_snapshot.py --ir build/modelgen/ir.json --check $(SCHEMA_SNAPSHOT)
 
 # ============================================================================
 # Cleanup

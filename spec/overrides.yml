@@ -1,0 +1,66 @@
+# Modelgen overrides: display names, extra edges, hidden nodes
+# Used by: modelgen build --overrides spec/overrides.yml
+
+nodes:
+  sim.engine.simulate:
+    display_name: "simulate()"
+    description: "Core simulation entry point: plan × state × fidelity → results"
+
+  sim.core.types.SimConfig:
+    display_name: "SimConfig"
+    description: "Typed simulation configuration with hash support for caching"
+
+  sim.core.types.SimResults:
+    display_name: "SimResults"
+    description: "Simulation output: profiles, events, artifacts, final_state"
+
+  sim.core.types.InitialState:
+    display_name: "InitialState"
+    description: "Spacecraft state vector (position, velocity, attitude, resources)"
+
+  sim.core.types.PlanInput:
+    display_name: "PlanInput"
+    description: "Activity schedule from Aerie export or normalized format"
+
+  sim.core.types.SpacecraftConfig:
+    display_name: "SpacecraftConfig"
+    description: "Spacecraft hardware parameters with config hashing"
+
+  sim.activities.base.ActivityHandler:
+    display_name: "ActivityHandler"
+    description: "Abstract base for activity processors (9 implementations)"
+
+  sim.models.power.PowerModel:
+    display_name: "PowerModel"
+    description: "Battery SOC tracking and solar generation model"
+
+  sim.models.access.AccessModel:
+    display_name: "AccessModel"
+    description: "Ground station access window computation"
+
+  sim.models.propulsion.EPModel:
+    display_name: "EPModel"
+    description: "Hall-effect electric propulsion model"
+
+# Extra edges for runtime relationships not captured by static imports
+edges:
+  - source: sim.engine.simulate
+    target: sim.activities.base.ActivityHandler
+    relation: uses
+    metadata:
+      note: "Runtime dispatch via handler registry"
+
+  - source: sim.engine.simulate
+    target: sim.core.types.PlanInput
+    relation: uses
+    metadata:
+      note: "Primary input"
+
+  - source: sim.engine.simulate
+    target: sim.core.types.SimResults
+    relation: uses
+    metadata:
+      note: "Primary output"
+
+# Nodes to hide from the viewer (internal implementation details)
+hidden: []

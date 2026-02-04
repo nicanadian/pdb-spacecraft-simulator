@@ -1,0 +1,108 @@
+# Modelgen configuration: what to scan, group definitions, component hints
+# Used by: modelgen extract --mappings spec/mappings.yml
+
+scan_paths:
+  - sim
+  - cli
+  - sim_mcp
+
+exclude_paths:
+  - __pycache__
+  - .pyc
+  - node_modules
+  - .git
+  - .egg-info
+
+project_prefixes:
+  - sim
+  - cli
+  - sim_mcp
+  - tools
+
+groups:
+  engine:
+    name: Engine
+    color: "#ef4444"
+    description: Core simulation engine and orchestration
+    module_patterns:
+      - sim.engine
+      - sim.cache
+
+  core_types:
+    name: Core Types
+    color: "#a855f7"
+    description: Core data structures, configuration, and time utilities
+    module_patterns:
+      - sim.core
+
+  models:
+    name: Physical Models
+    color: "#06b6d4"
+    description: Swappable physical simulation models
+    module_patterns:
+      - sim.models
+
+  activities:
+    name: Activity Handlers
+    color: "#22c55e"
+    description: Activity handler implementations (9 types)
+    module_patterns:
+      - sim.activities
+
+  io:
+    name: I/O
+    color: "#f59e0b"
+    description: Aerie parser, GraphQL client, external integrations
+    module_patterns:
+      - sim.io
+
+  viz:
+    name: Visualization
+    color: "#ec4899"
+    description: CZML generator, events formatter, visualization outputs
+    module_patterns:
+      - sim.viz
+
+  cli:
+    name: CLI
+    color: "#6366f1"
+    description: Command-line interface (simrun)
+    module_patterns:
+      - cli
+
+  mcp:
+    name: MCP
+    color: "#8b5cf6"
+    description: MCP server for AI integration
+    module_patterns:
+      - sim_mcp
+
+  infrastructure:
+    name: Infrastructure
+    color: "#64748b"
+    description: Build tools, scripts, utilities
+    module_patterns:
+      - tools
+      - scripts
+
+# Hints for classification overrides
+hints:
+  # Force these to be treated as components even if heuristics disagree
+  force_component:
+    - sim.models.power.PowerModel
+    - sim.models.orbit.OrbitPropagator
+    - sim.models.access.AccessModel
+    - sim.models.propulsion.EPModel
+    - sim.models.storage.SSRModel
+    - sim.models.atmosphere.AtmosphereModel
+
+  # Force these as handlers
+  force_handler:
+    - sim.activities.downlink.DownlinkHandler
+    - sim.activities.eo_collect.EOCollectHandler
+    - sim.activities.orbit_lower.OrbitLowerHandler
+    - sim.activities.collision_avoidance.CollisionAvoidanceHandler
+    - sim.activities.safe_mode.SafeModeHandler
+    - sim.activities.momentum_desat.MomentumDesatHandler
+    - sim.activities.station_keeping.StationKeepingHandler
+    - sim.activities.base.IdleHandler
