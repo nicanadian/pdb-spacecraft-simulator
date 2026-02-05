@@ -144,28 +144,60 @@ def extract(root: Path, mappings: Path, output: Path, architecture: Path):
 )
 def build(ir: Path, overrides: Path, output: Path):
     """Apply overrides to IR and produce model.json for the viewer."""
-    from tools.modelgen.ir.schema import IREdge, IRGraph, IRGroup, IRInvariant, IRNode
-
     click.echo(f"Loading IR from {ir}")
     ir_data = json.loads(ir.read_text())
-
-    # Reconstruct IRGraph from JSON
-    graph = _json_to_graph(ir_data)
 
     click.echo(f"Loading overrides from {overrides}")
     override_data = load_overrides(overrides)
 
-    if override_data:
-        graph = apply_overrides(graph, override_data)
-        click.echo("Applied overrides")
-
-    # Export
     output_path = Path(output)
-    out_file = export_json(graph, output_path)
-    click.echo(f"Written: {out_file}")
+    output_path.mkdir(parents=True, exist_ok=True)
+    out_file = output_path / "model.json"
 
-    visible = sum(1 for n in graph.nodes if not n.hidden)
-    click.echo(f"Model: {visible} visible nodes, {len(graph.edges)} edges")
+    # Check for v2 architecture model format
+    if ir_data.get("schema_version") == "2.0" and "architecture" in ir_data:
+        # v2 format: preserve full architecture model
+        click.echo("Detected v2 architecture model")
+
+        # Apply overrides to the ir_graph portion
+        if override_data and "ir_graph" in ir_data:
+            graph = _json_to_graph(ir_data["ir_graph"])
+            graph = apply_overrides(graph, override_data)
+            click.echo("Applied overrides to ir_graph")
+
+            # Serialize the updated ir_graph back into the model
+            from tools.modelgen.ir.serializer import serialize_graph_to_dict
+            ir_data["ir_graph"] = serialize_graph_to_dict(graph)
+
+        # Write the full v2 model
+        json_str = json.dumps(ir_data, indent=2, sort_keys=True, ensure_ascii=False)
+        out_file.write_text(json_str, encoding="utf-8")
+        click.echo(f"Written: {out_file}")
+
+        arch_nodes = len(ir_data.get("architecture", {}).get("nodes", []))
+        arch_edges = len(ir_data.get("architecture", {}).get("edges", []))
+        ir_nodes = len(ir_data.get("ir_graph", {}).get("nodes", []))
+        viewpoints = len(ir_data.get("viewpoints", []))
+        reqs = len(ir_data.get("requirements", {}).get("items", []))
+        click.echo(
+            f"Model: {arch_nodes} arch nodes, {arch_edges} arch edges, "
+            f"{ir_nodes} ir nodes, {viewpoints} viewpoints, {reqs} requirements"
+        )
+    else:
+        # v1 format: legacy behavior
+        click.echo("Detected v1 format (legacy)")
+        graph = _json_to_graph(ir_data)
+
+        if override_data:
+            graph = apply_overrides(graph, override_data)
+            click.echo("Applied overrides")
+
+        # Export v1 format
+        out_file = export_json(graph, output_path)
+        click.echo(f"Written: {out_file}")
+
+        visible = sum(1 for n in graph.nodes if not n.hidden)
+        click.echo(f"Model: {visible} visible nodes, {len(graph.edges)} edges")
 
 
 @modelgen.command()
@@ -262,6 +294,10 @@ def serve(serve_dir: Path, port: int, no_open: bool):
 def _json_to_graph(data: dict) -> "IRGraph":
     """Reconstruct an IRGraph from parsed JSON."""
     from tools.modelgen.ir.schema import IREdge, IRGraph, IRGroup, IRInvariant, IRNode
+
+    # Handle v2 format: ir_graph is nested under "ir_graph" key
+    if data.get("schema_version") == "2.0" and "ir_graph" in data:
+        data = data["ir_graph"]
 
     nodes = []
     for nd in data.get("nodes", []):
