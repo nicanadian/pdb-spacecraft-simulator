@@ -6,7 +6,7 @@ Follows the same pattern as tests/e2e/pages/aerie.py.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 try:
     from playwright.sync_api import Page, expect
@@ -793,6 +793,152 @@ class ViewerPage:
             return True
         except Exception:
             return False
+
+    # === Degraded Mode Detection Methods ===
+
+    def get_degraded_status(self) -> Dict[str, Any]:
+        """
+        Get degraded mode status from the viewer.
+
+        Returns:
+            Dictionary with degraded flag and reason if available
+        """
+        status = {
+            "degraded": False,
+            "degraded_reason": None,
+            "indicator_visible": False,
+        }
+
+        try:
+            # Check for degraded badge/indicator
+            degraded_indicators = [
+                ".degraded-badge",
+                ".degraded-warning",
+                "[data-degraded='true']",
+                ".fidelity-degraded",
+                ".status-degraded",
+                ".degraded-indicator",
+            ]
+
+            for selector in degraded_indicators:
+                el = self.page.query_selector(selector)
+                if el and el.is_visible():
+                    status["indicator_visible"] = True
+                    status["degraded"] = True
+                    # Try to get text content for reason
+                    status["degraded_reason"] = el.inner_text().strip()
+                    break
+
+            # Also check page content for degraded text
+            if not status["degraded"]:
+                page_content = self.page.content().lower()
+                if "degraded" in page_content or "j2 fallback" in page_content:
+                    status["degraded"] = True
+
+            # Check context chips for degraded indication
+            chips = self.get_context_chips()
+            if chips.get("fidelity", "").lower().find("degraded") != -1:
+                status["degraded"] = True
+
+        except Exception:
+            pass
+
+        return status
+
+    def get_high_fidelity_flags_display(self) -> Dict[str, Any]:
+        """
+        Get HIGH fidelity flags display from the viewer.
+
+        Returns:
+            Dictionary with flags if displayed
+        """
+        flags = {}
+
+        try:
+            # Look for high fidelity flags in various UI locations
+            flags_panel = self.page.query_selector(
+                ".high-fidelity-flags, .hf-flags, [data-hf-flags]"
+            )
+            if flags_panel:
+                flags["panel_visible"] = True
+                flags["content"] = flags_panel.inner_text()
+
+            # Check manifest display for flags
+            manifest_el = self.page.query_selector(
+                ".manifest-details, .run-details"
+            )
+            if manifest_el:
+                text = manifest_el.inner_text().lower()
+                if "ep_shadow" in text:
+                    flags["ep_shadow_constraints"] = True
+                if "ka_weather" in text:
+                    flags["ka_weather_model"] = True
+
+        except Exception:
+            pass
+
+        return flags
+
+    def has_degraded_warning_banner(self) -> bool:
+        """
+        Check if a degraded mode warning banner is visible.
+
+        Returns:
+            True if warning banner is displayed
+        """
+        try:
+            banner_selectors = [
+                ".degraded-banner",
+                ".warning-banner:has-text('degraded')",
+                ".alert-banner.degraded",
+                "[data-testid='degraded-warning']",
+            ]
+            for selector in banner_selectors:
+                el = self.page.query_selector(selector)
+                if el and el.is_visible():
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def get_propagator_info(self) -> Dict[str, str]:
+        """
+        Get propagator information from the viewer.
+
+        Returns:
+            Dictionary with propagator version and type
+        """
+        info = {
+            "version": "",
+            "type": "",
+            "is_fallback": False,
+        }
+
+        try:
+            # Look for propagator info in manifest or details panel
+            info_selectors = [
+                ".propagator-info",
+                "[data-propagator-version]",
+                ".model-versions .propagator",
+            ]
+            for selector in info_selectors:
+                el = self.page.query_selector(selector)
+                if el:
+                    text = el.inner_text().lower()
+                    info["version"] = el.inner_text().strip()
+                    if "j2" in text:
+                        info["type"] = "J2"
+                        info["is_fallback"] = True
+                    elif "basilisk" in text:
+                        info["type"] = "Basilisk"
+                    elif "sgp4" in text:
+                        info["type"] = "SGP4"
+                    break
+
+        except Exception:
+            pass
+
+        return info
 
     # === Artifact Capture Methods ===
 
